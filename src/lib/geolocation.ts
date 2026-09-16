@@ -10,15 +10,91 @@ export interface GeolocationResult {
   country?: string;
   postalCode?: string;
   matchedDistrict: DistrictData;
+  source: 'gps' | 'ip' | 'cached' | 'fallback';
+}
+
+const LOCAL_STORAGE_KEY = 'finfeasibility_detected_location';
+
+/**
+ * Attempt IP-based location detection if browser GPS is blocked/denied.
+ */
+export async function detectLocationByIP(): Promise<GeolocationResult> {
+  try {
+    const res = await fetch('https://ipwho.is/');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success !== false) {
+        const city = data.city || '';
+        const region = data.region || '';
+        const country = data.country || 'India';
+        const lat = data.latitude || 17.6805;
+        const lon = data.longitude || 74.0183;
+
+        // Match with district database
+        const cleanName = city.replace(/\s+district/i, '').trim();
+        let matched = DISTRICTS_DATABASE.find(
+          (d) =>
+            d.name.toLowerCase() === cleanName.toLowerCase() ||
+            d.state.toLowerCase() === region.toLowerCase()
+        );
+
+        if (!matched) {
+          matched = synthesizeDistrictData(cleanName || region || 'Regional Hub', region || 'India');
+        }
+
+        return {
+          latitude: lat,
+          longitude: lon,
+          city,
+          district: cleanName || matched.name,
+          state: region || matched.state,
+          country,
+          matchedDistrict: matched,
+          source: 'ip',
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('IP-based geocoding unavailable:', e);
+  }
+
+  return {
+    latitude: 17.6805,
+    longitude: 74.0183,
+    district: DISTRICTS_DATABASE[0].name,
+    state: DISTRICTS_DATABASE[0].state,
+    country: 'India',
+    matchedDistrict: DISTRICTS_DATABASE[0],
+    source: 'fallback',
+  };
 }
 
 /**
  * Trigger HTML5 browser geolocation and reverse-geocode to extract district and state.
+ * Automatically falls back to IP-based location if GPS is denied or unavailable.
  */
 export async function detectUserLocation(): Promise<GeolocationResult> {
-  return new Promise((resolve, reject) => {
+  // Check cached location first if available
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.matchedDistrict) {
+          // Verify it's within 24 hours
+          if (Date.now() - (parsed.timestamp || 0) < 24 * 60 * 60 * 1000) {
+            return { ...parsed, source: 'cached' };
+          }
+        }
+      }
+    } catch {
+      // Ignore localStorage error
+    }
+  }
+
+  return new Promise((resolve) => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
-      reject(new Error('Geolocation is not supported by your browser.'));
+      detectLocationByIP().then(resolve);
       return;
     }
 
@@ -27,7 +103,6 @@ export async function detectUserLocation(): Promise<GeolocationResult> {
         const { latitude, longitude } = position.coords;
 
         try {
-          // Attempt reverse geocoding via BigDataCloud client API (free, no key required, fast)
           let city = '';
           let districtName = '';
           let stateName = '';
@@ -48,7 +123,6 @@ export async function detectUserLocation(): Promise<GeolocationResult> {
             }
           } catch (fetchErr) {
             console.warn('Primary reverse-geocode fallback to Nominatim:', fetchErr);
-            // Secondary fallback via OpenStreetMap Nominatim
             const nomRes = await fetch(
               `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`
             );
@@ -62,10 +136,8 @@ export async function detectUserLocation(): Promise<GeolocationResult> {
             }
           }
 
-          // Clean district name (remove suffixes like "District", "Division")
           const cleanDistrict = districtName.replace(/\s+district/i, '').replace(/\s+division/i, '').trim();
 
-          // Find match in existing database or dynamically synthesize full district data
           let matchedDistrict = DISTRICTS_DATABASE.find(
             (d) =>
               d.name.toLowerCase() === cleanDistrict.toLowerCase() ||
@@ -79,7 +151,7 @@ export async function detectUserLocation(): Promise<GeolocationResult> {
             matchedDistrict = synthesizeDistrictData(fallbackName, fallbackState);
           }
 
-          resolve({
+          const result: GeolocationResult = {
             latitude,
             longitude,
             city,
@@ -88,31 +160,30 @@ export async function detectUserLocation(): Promise<GeolocationResult> {
             country: countryName,
             postalCode,
             matchedDistrict,
-          });
-        } catch (err: any) {
-          // In case of network error on geocoding API, fallback to default district
-          resolve({
-            latitude,
-            longitude,
-            matchedDistrict: DISTRICTS_DATABASE[0],
-          });
+            source: 'gps',
+          };
+
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ ...result, timestamp: Date.now() }));
+            } catch {
+              // Ignore localStorage quota
+            }
+          }
+
+          resolve(result);
+        } catch {
+          detectLocationByIP().then(resolve);
         }
       },
-      (error) => {
-        let msg = 'Failed to retrieve GPS location.';
-        if (error.code === error.PERMISSION_DENIED) {
-          msg = 'Location permission was denied. Please allow location access in your browser or select a region manually.';
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
-          msg = 'Location information is currently unavailable.';
-        } else if (error.code === error.TIMEOUT) {
-          msg = 'The request to get user location timed out.';
-        }
-        reject(new Error(msg));
+      () => {
+        // If GPS permission is denied or timed out, fallback to IP detection seamlessly
+        detectLocationByIP().then(resolve);
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000,
+        timeout: 8000,
+        maximumAge: 120000,
       }
     );
   });
