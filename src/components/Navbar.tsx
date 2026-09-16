@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { AuthModal } from '@/components/AuthModal';
 import { 
   Building2, 
   MapPin, 
@@ -41,6 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenVoice,
   onOpenTeamModal
 }) => {
+  const [showAuth, setShowAuth] = useState(false);
   const pathname = usePathname();
   const t = TRANSLATIONS[currentLang];
 
@@ -53,6 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   ];
 
   return (
+    <>
     <header className="sticky top-0 z-50 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border-b border-emerald-100 dark:border-zinc-800 transition-colors">
       {/* Top micro-bar showing National Alignment & B.Tech Capstone Project Tag */}
       <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white text-xs py-1 px-4">
@@ -163,5 +166,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
     </header>
+      {showAuth && <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} />}
+    </>
   );
 };

@@ -409,3 +409,19 @@ export const BUSINESS_TEMPLATES: BusinessTemplate[] = [
     recommendedSchemes: ['pmegp', 'pmfme', 'standup-india']
   }
 ];
+
+// Runtime dynamic business registry for user demand-driven ideas
+const DYNAMIC_BUSINESS_REGISTRY: BusinessTemplate[] = [];
+
+export function registerCustomBusinessTemplate(template: BusinessTemplate): void {
+  const existingIdx = DYNAMIC_BUSINESS_REGISTRY.findIndex(b => b.id === template.id);
+  if (existingIdx >= 0) {
+    DYNAMIC_BUSINESS_REGISTRY[existingIdx] = template;
+  } else {
+    DYNAMIC_BUSINESS_REGISTRY.unshift(template);
+  }
+}
+
+export function getAllBusinessTemplates(): BusinessTemplate[] {
+  return [...DYNAMIC_BUSINESS_REGISTRY, ...BUSINESS_TEMPLATES];
+}

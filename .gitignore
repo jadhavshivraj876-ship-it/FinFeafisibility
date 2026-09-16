@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local ide, agents & tools
+.agents/
+.vscode/
+connect.ps1
