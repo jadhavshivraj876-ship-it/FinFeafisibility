@@ -7,18 +7,38 @@ export async function saveUserBusiness(profile: Omit<UserBusinessProfile, 'id' |
     const { data: authData } = await supabase.auth.getUser();
     const user = authData?.user;
 
+    // Check local storage active user if supabase user not session-linked
+    let userEmail = user?.email;
+    let userId = user?.id;
+    if (!user && typeof window !== 'undefined') {
+      const activeStr = localStorage.getItem('finfeasibility_active_user');
+      if (activeStr) {
+        const active = JSON.parse(activeStr);
+        userEmail = active.email;
+        userId = active.id;
+      }
+    }
+
+    const uniqueId = 'biz-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+
     const record: UserBusinessProfile = {
       ...profile,
-      userId: user?.id || 'guest-entrepreneur',
+      id: uniqueId,
+      userId: userId || 'guest-entrepreneur',
       createdAt: new Date().toISOString()
     };
 
-    // Save to local cache first so offline works instantly
+    // Save to local cache first so offline & immediate UI works instantly
     try {
-      const existingStr = localStorage.getItem(LOCAL_STORAGE_KEY);
+      const existingStr = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_KEY) : null;
       const existingList: UserBusinessProfile[] = existingStr ? JSON.parse(existingStr) : [];
-      existingList.unshift(record);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(existingList.slice(0, 20)));
+      // Prevent duplicate saving of the exact same title & district within 1 minute
+      const filtered = existingList.filter(item => !(item.businessTitle === profile.businessTitle && item.district === profile.district));
+      filtered.unshift(record);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(filtered.slice(0, 30)));
+        window.dispatchEvent(new Event('finfeasibility_storage_updated'));
+      }
     } catch (e) {
       console.warn('LocalStorage save error:', e);
     }
@@ -30,7 +50,7 @@ export async function saveUserBusiness(profile: Omit<UserBusinessProfile, 'id' |
         .insert([
           {
             user_id: user.id,
-            user_email: user.email,
+            user_email: userEmail || user.email,
             business_title: profile.businessTitle,
             category: profile.category,
             district: profile.district,
@@ -40,13 +60,12 @@ export async function saveUserBusiness(profile: Omit<UserBusinessProfile, 'id' |
             subsidy_percent: profile.subsidyPercent,
             dscr: profile.dscr,
             monthly_revenue: profile.monthlyRevenue,
-            created_at: new Date().toISOString()
+            created_at: record.createdAt
           }
         ])
         .select();
 
       if (error) {
-        // Table might not exist yet if not created in Supabase dashboard, still return success from local cache
         console.warn('Supabase insert note (cached locally):', error.message);
         return { success: true, data: record };
       }
@@ -97,5 +116,30 @@ export async function getUserBusinesses(): Promise<UserBusinessProfile[]> {
     console.warn('Error fetching businesses, using cache:', err);
     const existingStr = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_KEY) : null;
     return existingStr ? JSON.parse(existingStr) : [];
+  }
+}
+
+export async function deleteUserBusiness(id: string): Promise<boolean> {
+  try {
+    // Delete from Supabase if online
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData?.user) {
+      await supabase.from('user_businesses').delete().eq('id', id);
+    }
+
+    // Delete from LocalStorage
+    if (typeof window !== 'undefined') {
+      const existingStr = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (existingStr) {
+        const list: UserBusinessProfile[] = JSON.parse(existingStr);
+        const filtered = list.filter(item => item.id !== id);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(filtered));
+        window.dispatchEvent(new Event('finfeasibility_storage_updated'));
+      }
+    }
+    return true;
+  } catch (err) {
+    console.error('Delete error:', err);
+    return false;
   }
 }

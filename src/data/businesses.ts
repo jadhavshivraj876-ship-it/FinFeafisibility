@@ -410,18 +410,18 @@ export const BUSINESS_TEMPLATES: BusinessTemplate[] = [
   }
 ];
 
-// Runtime dynamic business registry for user demand-driven ideas
-const DYNAMIC_BUSINESS_REGISTRY: BusinessTemplate[] = [];
+// Runtime business registry for user demand-driven ideas
+const CUSTOM_BUSINESS_REGISTRY: BusinessTemplate[] = [];
 
 export function registerCustomBusinessTemplate(template: BusinessTemplate): void {
-  const existingIdx = DYNAMIC_BUSINESS_REGISTRY.findIndex(b => b.id === template.id);
+  const existingIdx = CUSTOM_BUSINESS_REGISTRY.findIndex(b => b.id === template.id);
   if (existingIdx >= 0) {
-    DYNAMIC_BUSINESS_REGISTRY[existingIdx] = template;
+    CUSTOM_BUSINESS_REGISTRY[existingIdx] = template;
   } else {
-    DYNAMIC_BUSINESS_REGISTRY.unshift(template);
+    CUSTOM_BUSINESS_REGISTRY.unshift(template);
   }
 }
 
 export function getAllBusinessTemplates(): BusinessTemplate[] {
-  return [...DYNAMIC_BUSINESS_REGISTRY, ...BUSINESS_TEMPLATES];
+  return [...CUSTOM_BUSINESS_REGISTRY, ...BUSINESS_TEMPLATES];
 }

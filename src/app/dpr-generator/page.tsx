@@ -18,7 +18,10 @@ import { DprDocument } from '@/components/DprDocument';
 import { TeamModal } from '@/components/TeamModal';
 import { VoiceAssistantModal } from '@/components/VoiceAssistantModal';
 
+import { useAuth } from '@/lib/useAuth';
+
 export default function DprGeneratorPage() {
+  const { user } = useAuth();
   const [currentLang, setCurrentLang] = useState<Language>('en');
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
@@ -32,6 +35,16 @@ export default function DprGeneratorPage() {
   const [gender] = useState<Gender>('Male');
   const [education] = useState<EntrepreneurProfile['education']>('Graduate/Diploma');
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+
+  useEffect(() => {
+    if (user?.user_metadata?.full_name) {
+      setApplicantName(user.user_metadata.full_name);
+    }
+    if (user?.user_metadata?.district) {
+      const match = DISTRICTS_DATABASE.find(d => d.name.toLowerCase() === user.user_metadata.district.toLowerCase());
+      if (match) setSelectedDistrictId(match.id);
+    }
+  }, [user]);
 
   // Auto-detect location on mount
   useEffect(() => {
@@ -150,7 +163,7 @@ export default function DprGeneratorPage() {
               />
             </div>
 
-            {/* Target Enterprise Idea (Dynamic or Template) */}
+            {/* Target Enterprise Concept */}
             <div className="space-y-1">
               <label className="font-semibold text-zinc-700 dark:text-zinc-300 flex items-center justify-between">
                 <span>Enterprise Idea</span>

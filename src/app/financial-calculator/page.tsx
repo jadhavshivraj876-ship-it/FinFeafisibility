@@ -27,7 +27,7 @@ export default function FinancialCalculatorPage() {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
-  // Dynamic Financial Form Inputs
+  // Custom Financial Form Inputs
   const [projectCost, setProjectCost] = useState<number>(1250000);
   const [ownContributionPercent, setOwnContributionPercent] = useState<number>(10);
   const [subsidyPercent, setSubsidyPercent] = useState<number>(35); // Default PMEGP rural special

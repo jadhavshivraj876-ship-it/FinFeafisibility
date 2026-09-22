@@ -9,7 +9,7 @@ export interface DomainClassification {
 }
 
 /**
- * Extract the business domain/industry sector dynamically from any user-provided concept.
+ * Extract the business domain/industry sector adaptively from any user-provided concept.
  */
 export function extractBusinessDomain(userQuery: string): DomainClassification {
   const q = userQuery.toLowerCase().trim();
@@ -231,7 +231,7 @@ export function generateDemandBusinessTemplate(
     title,
     vernacular,
     category,
-    description: `Dynamic enterprise model for ${title}. Tailored to utilize regional supply chains, satisfy bank DSCR criteria (>1.5), and secure government capital subsidies up to 35%.`,
+    description: `Enterprise model for ${title}. Tailored to utilize regional supply chains, satisfy bank DSCR criteria (>1.5), and secure government capital subsidies up to 35%.`,
     rawMaterials: [
       `Primary Raw Materials for ${title}`,
       'Packaging materials & food-grade containers',

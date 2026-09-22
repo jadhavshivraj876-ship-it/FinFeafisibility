@@ -447,7 +447,7 @@ export const DISTRICTS_DATABASE: DistrictData[] = [
 ];
 
 /**
- * Dynamically synthesizes a complete DistrictData profile for ANY custom location or detected GPS coordinate in India or abroad.
+ * Adaptively synthesizes a complete DistrictData profile for ANY custom location or detected GPS coordinate in India or abroad.
  */
 export function synthesizeDistrictData(districtName: string, stateName: string): DistrictData {
   const safeDistrict = districtName.trim() || 'Custom District';

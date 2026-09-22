@@ -146,7 +146,7 @@ export async function detectUserLocation(): Promise<GeolocationResult> {
           );
 
           if (!matchedDistrict) {
-            const fallbackName = cleanDistrict || city || 'Dynamic Region';
+            const fallbackName = cleanDistrict || city || 'Target Region';
             const fallbackState = stateName || 'India';
             matchedDistrict = synthesizeDistrictData(fallbackName, fallbackState);
           }

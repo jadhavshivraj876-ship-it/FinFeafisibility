@@ -10,16 +10,34 @@ import {
   Sparkles, 
   ArrowRight, 
   HelpCircle,
-  CheckCircle2,
-  Bot
+  CheckCircle2, 
+  Bot,
+  Send,
+  Loader2
 } from 'lucide-react';
 import { Language } from '@/types';
 import { SpeechAssistant } from '@/lib/speechUtils';
+
+export interface VoiceAssistantContext {
+  businessTitle?: string;
+  location?: string;
+  domain?: string;
+  category?: string;
+  projectCost?: number;
+  subsidyAmount?: number;
+  dscr?: number;
+  marginPercent?: number;
+  rawMaterials?: string[];
+  statutoryLicenses?: string[];
+  eligibleSchemes?: Array<{ name: string; subsidyPercent?: number }>;
+  matchedInvestors?: Array<{ name: string; ticketSizeRange?: string }>;
+}
 
 interface VoiceAssistantModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentLang: Language;
+  activeContext?: VoiceAssistantContext;
 }
 
 interface ChatMessage {
@@ -64,7 +82,7 @@ const SAMPLE_QUERIES: Record<Language, string[]> = {
     'PMEGP યોજનામાં સબસિડી કેટલી મળે છે?'
   ],
   bn: [
-    'মিনি ডাল মিল শুরু করতে কত মূলধন দরকার?',
+    'মিনি ডাল মিল शुरू করতে কত মূলধন দরকার?',
     'PMEGP প্রকল্পে ভর্তুকি কত পাওয়া যায়?'
   ]
 };
@@ -72,21 +90,24 @@ const SAMPLE_QUERIES: Record<Language, string[]> = {
 export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
   isOpen,
   onClose,
-  currentLang
+  currentLang,
+  activeContext
 }) => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
+  const [textInput, setTextInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       sender: 'assistant',
       text:
         currentLang === 'mr'
-          ? 'नमस्कार! मी फिनमित्र (FinMitra) — आपला ग्रामीण व्यवसाय व कर्ज सल्लागार. आपण व्यवसाय खर्च, सरकारी सबसिडी किंवा बँक कर्जाविषयी प्रश्न विचारू शकता.'
+          ? 'नमस्कार! मी फिनमित्र (FinMitra) — आपला AI ग्रामीण व्यवसाय व बँक कर्ज सल्लागार. आपल्या उद्योगाबद्दल, सबसिडी किंवा बँक कर्जाबद्दल कोणताही प्रश्न विचारू शकता.'
           : currentLang === 'hi'
-          ? 'नमस्ते! मैं फिनमित्र (FinMitra) — आपका ग्रामीण व्यापार एवं ऋण सलाहकार। आप व्यवसाय लागत, सब्सिडी या बैंक लोन के बारे में पूछ सकते हैं।'
-          : 'Hello! I am FinMitra — your rural micro-enterprise and bank financing advisory assistant. Ask me about project costs, government subsidies, or loan repayment schedules.'
+          ? 'नमस्ते! मैं फिनमित्र (FinMitra) — आपका AI ग्रामीण उद्योग एवं ऋण सलाहकार। आप अपने उद्यम, PMEGP सब्सिडी या बैंक लोन के बारे में कोई भी सवाल पूछ सकते हैं।'
+          : 'Hello! I am FinMitra — your AI rural micro-enterprise and bank financing advisory assistant. Ask me anything about your project costs, government subsidies, licenses, or bank DPR.'
     }
   ]);
 
@@ -103,7 +124,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isThinking]);
 
   if (!isOpen) return null;
 
@@ -135,76 +156,86 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
     }
   };
 
-  const handleProcessQuery = (query: string) => {
+  const handleProcessQuery = async (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed || isThinking) return;
+
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       sender: 'user',
-      text: query
+      text: trimmed
     };
 
     setMessages((prev) => [...prev, userMsg]);
     setIsListening(false);
+    setTextInput('');
+    setIsThinking(true);
 
-    // Dynamic Intelligent Advisory Response Generator
-    const qLower = query.toLowerCase();
-    let reply = '';
-    let link: ChatMessage['actionLink'] = undefined;
+    try {
+      const userApiKey = typeof window !== 'undefined' ? localStorage.getItem('finfeasibility_gemini_api_key') || '' : '';
 
-    if (qLower.includes('pmegp') || qLower.includes('सबसिडी') || qLower.includes('subsidy') || qLower.includes('अनुदान')) {
-      reply =
-        currentLang === 'mr'
-          ? 'PMEGP योजनेअंतर्गत ग्रामीण भागातील महिला, SC, ST, OBC प्रवर्गासाठी तब्बल ३५% भांडवली अनुदान (सबसिडी) मिळते. यासाठी उद्योजकाचे स्वतःचे योगदान फक्त ५% आवश्यक असते, तर उर्वरित ९०-९५% रक्कम बँकेमार्फत मुदत कर्ज स्वरूपात मिळते!'
-          : currentLang === 'hi'
-          ? 'PMEGP योजना के तहत ग्रामीण क्षेत्रों में महिलाओं, SC, ST, OBC वर्ग के लिए 35% पूंजीगत सब्सिडी मिलती है। उद्यमी का अपना अंशदान सिर्फ 5% रहता है और बाकी बैंक लोन मिलता है।'
-          : 'Under PMEGP, rural special category entrepreneurs (Women, SC, ST, OBC, Minority) get 35% capital subsidy, requiring only 5% promoter contribution, with the remaining 95% financed by bank loan.';
-      link = { label: 'Explore Scheme Router', href: '/scheme-router' };
-    } else if (qLower.includes('हळद') || qLower.includes('turmeric') || qLower.includes('हल्दी')) {
-      reply =
-        currentLang === 'mr'
-          ? 'हळद पावडर व पॉलिशिंग युनिटसाठी अंदाजे १२.५ लाख रुपये प्रकल्प खर्च येतो. PMEGP मधून ४.३ लाख रुपयांपर्यंत अनुदान मिळू शकते. मासिक नफा अंदाजे ६०,००० ते ८०,००० रुपये संभव आहे.'
-          : currentLang === 'hi'
-          ? 'हल्दी पाउडर व पॉलिशिंग इकाई के लिए लगभग ₹12.5 लाख का प्रोजेक्ट कॉस्ट लगता है, जिसमें PMEGP से 35% तक सब्सिडी मिल सकती है।'
-          : 'A Turmeric Processing & Packaging unit costs approx ₹12.5 Lakhs. With PMEGP rural subsidy (₹4.37 Lakhs), the effective loan burden is significantly minimized with average DSCR of 1.78.';
-      link = { label: 'View Financial Plan', href: '/financial-calculator' };
-    } else if (qLower.includes('दाल') || qLower.includes('डाळ') || qLower.includes('dal')) {
-      reply =
-        currentLang === 'mr'
-          ? 'मिनी डाळ मिल प्रकल्पाचा एकूण खर्च सुमारे ९.५ लाख रुपये आहे. तूर, हरभरा व मूग डाळ प्रक्रियेतून २०% ते २२% नफा मिळतो. हा प्रकल्प मुद्रा किंवा PMEGP अंतर्गत सहज मंजूर होतो.'
-          : 'Automatic Mini Dal Mill project cost is approx ₹9.5 Lakhs. With steady local pulse sourcing, it provides a break-even at 42% capacity.';
-      link = { label: 'Calculate EMI & DSCR', href: '/financial-calculator' };
-    } else if (qLower.includes('dscr') || qLower.includes('कर्ज') || qLower.includes('loan') || qLower.includes('बँक')) {
-      reply =
-        currentLang === 'mr'
-          ? 'बँका कर्ज मंजूर करताना DSCR (Debt Service Coverage Ratio) १.५ पेक्षा जास्त तपासतात. FinFeasibility मध्ये आपले कर्ज आपोआप १.५+ DSCR नुसार नियोजित केले जाते जेणेकरून बँक कर्ज नाकारत नाही.'
-          : currentLang === 'hi'
-          ? 'बैंक लोन पास करते समय DSCR अनुपात 1.5 से अधिक होना चाहिए। हमारा सिस्टम स्वचालित रूप से बैंक-अनुकूल वित्तीय रिपोर्ट तैयार करता है।'
-          : 'Banks require a minimum DSCR of 1.4 to 1.5 to approve loans. FinFeasibility structures your revenue and debt service to ensure optimal DSCR and zero loan rejections.';
-      link = { label: 'Check DPR Generator', href: '/dpr-generator' };
-    } else {
-      reply =
-        currentLang === 'mr'
-          ? `आपला प्रश्न: "${query}". या प्रकल्पाची स्थानिक बाजारातील व्यवहार्यता, कच्चा माल उपलब्धता आणि सरकारी योजना तपासून आम्ही तपशीलवार अहवाल तयार केला आहे.`
-          : currentLang === 'hi'
-          ? `आपके सवाल "${query}" के आधार पर, हमने स्थानीय बाजार मांग और उपयुक्त सरकारी योजना का विश्लेषण किया है।`
-          : `For your query regarding "${query}", FinFeasibility recommends evaluating local APMC raw material proximity and structuring financing under PMEGP or PMFME.`;
-      link = { label: 'View Full Feasibility', href: '/' };
-    }
-
-    const assistantMsg: ChatMessage = {
-      id: (Date.now() + 1).toString(),
-      sender: 'assistant',
-      text: reply,
-      actionLink: link
-    };
-
-    setMessages((prev) => [...prev, assistantMsg]);
-
-    // Speak reply
-    if (speechRef.current) {
-      setIsSpeaking(true);
-      speechRef.current.speak(reply, currentLang, () => {
-        setIsSpeaking(false);
+      const res = await fetch('/api/advisory-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: trimmed,
+          history: messages.map(m => ({ sender: m.sender === 'assistant' ? 'ai' : 'user', text: m.text })),
+          context: activeContext,
+          language: currentLang,
+          userApiKey
+        })
       });
+
+      const data = await res.json();
+      const replyText = data.reply || (
+        currentLang === 'mr'
+          ? 'माफ करा, प्रतिसाद मिळवण्यात अडचण आली. कृपया पुन्हा विचारून पहा.'
+          : currentLang === 'hi'
+          ? 'क्षमा करें, उत्तर प्राप्त नहीं हो सका। कृपया पुनः प्रयास करें।'
+          : 'Could not fetch response. Please try asking again.'
+      );
+
+      // Determine action link if relevant
+      let link: ChatMessage['actionLink'] = undefined;
+      const lowerReply = replyText.toLowerCase();
+      if (lowerReply.includes('pmegp') || lowerReply.includes('subsidy') || lowerReply.includes('anudan')) {
+        link = { label: 'Explore Scheme Router', href: '/scheme-router' };
+      } else if (lowerReply.includes('dscr') || lowerReply.includes('financial') || lowerReply.includes('margin')) {
+        link = { label: 'View Financial Calculator', href: '/financial-calculator' };
+      } else if (lowerReply.includes('dpr') || lowerReply.includes('bank report')) {
+        link = { label: 'Generate Bank DPR', href: '/dpr-generator' };
+      }
+
+      const assistantMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'assistant',
+        text: replyText,
+        actionLink: link
+      };
+
+      setMessages((prev) => [...prev, assistantMsg]);
+
+      // Speak reply
+      if (speechRef.current) {
+        setIsSpeaking(true);
+        speechRef.current.speak(replyText, currentLang, () => {
+          setIsSpeaking(false);
+        });
+      }
+    } catch (err) {
+      console.warn('Voice AI query error:', err);
+      const fallbackMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'assistant',
+        text: currentLang === 'mr'
+          ? 'माफ करा, सर्व्हरशी संपर्क साधताना अडचण आली. कृपया पुन्हा विचारून पहा.'
+          : currentLang === 'hi'
+          ? 'क्षमा करें, सर्वर से संपर्क नहीं हो पाया। कृपया पुनः प्रयास करें।'
+          : 'Sorry, could not connect to AI advisory service. Please try asking again.'
+      };
+      setMessages((prev) => [...prev, fallbackMsg]);
+    } finally {
+      setIsThinking(false);
     }
   };
 
@@ -216,7 +247,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
       <div 
-        className="relative bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-amber-200 dark:border-zinc-700 flex flex-col h-[620px] max-h-[90vh] overflow-hidden"
+        className="relative bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-amber-200 dark:border-zinc-700 flex flex-col h-[640px] max-h-[92vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -227,13 +258,13 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base">FinMitra Rural Voice Assistant</h3>
+                <h3 className="font-bold text-base">FinMitra Rural AI Advisor</h3>
                 <span className="text-[10px] bg-amber-900/60 text-amber-200 px-2 py-0.5 rounded-full border border-amber-400/40">
                   Multilingual AI
                 </span>
               </div>
               <p className="text-amber-100 text-xs">
-                Ask in Marathi, Hindi, or English about schemes, costs & bank loans
+                Speak or type in Marathi, Hindi, or English about schemes, costs & bank loans
               </p>
             </div>
           </div>
@@ -270,7 +301,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
                 </div>
               )}
               <div
-                className={`max-w-[82%] p-3.5 rounded-2xl leading-relaxed shadow-xs ${
+                className={`max-w-[85%] p-3.5 rounded-2xl leading-relaxed shadow-xs whitespace-pre-line ${
                   m.sender === 'user'
                     ? 'bg-emerald-700 text-white rounded-br-none'
                     : 'bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 rounded-bl-none'
@@ -292,6 +323,19 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
               </div>
             </div>
           ))}
+
+          {isThinking && (
+            <div className="flex gap-3 justify-start">
+              <div className="w-7 h-7 rounded-full bg-amber-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">
+                FM
+              </div>
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-800 border border-amber-200 dark:border-zinc-700 shadow-xs flex items-center gap-2 text-zinc-600 dark:text-zinc-300">
+                <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+                <span className="text-xs italic">FinMitra is thinking...</span>
+              </div>
+            </div>
+          )}
+
           <div ref={chatEndRef} />
         </div>
 
@@ -306,7 +350,8 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
               <button
                 key={idx}
                 onClick={() => handleProcessQuery(q)}
-                className="shrink-0 text-left bg-zinc-100 dark:bg-zinc-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-zinc-700 dark:text-zinc-300 hover:text-amber-800 dark:hover:text-amber-300 border border-zinc-200 dark:border-zinc-700 rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors cursor-pointer"
+                disabled={isThinking}
+                className="shrink-0 text-left bg-zinc-100 dark:bg-zinc-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-zinc-700 dark:text-zinc-300 hover:text-amber-800 dark:hover:text-amber-300 border border-zinc-200 dark:border-zinc-700 rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors cursor-pointer disabled:opacity-50"
               >
                 {q}
               </button>
@@ -314,38 +359,69 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
           </div>
         </div>
 
-        {/* Voice Input Action Bar */}
-        <div className="p-4 bg-zinc-100 dark:bg-zinc-800 border-t border-zinc-200 dark:border-zinc-700 flex items-center gap-3">
-          <button
-            onClick={handleToggleListening}
-            className={`w-12 h-12 rounded-full flex items-center justify-center text-white transition-all shadow-md cursor-pointer shrink-0 ${
-              isListening
-                ? 'bg-rose-600 animate-bounce ring-4 ring-rose-300'
-                : 'bg-amber-600 hover:bg-amber-700 active:scale-95'
-            }`}
-            title={isListening ? 'Stop listening' : 'Start speaking'}
+        {/* Voice & Text Input Action Bar */}
+        <div className="p-3 bg-zinc-100 dark:bg-zinc-800 border-t border-zinc-200 dark:border-zinc-700 flex flex-col gap-2">
+          {/* Text Input Row */}
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleProcessQuery(textInput);
+            }} 
+            className="flex items-center gap-2"
           >
-            {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-          </button>
+            <input
+              type="text"
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              placeholder="Type your question in Marathi, Hindi, or English..."
+              disabled={isThinking}
+              className="flex-1 px-3 py-2 text-xs rounded-xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-hidden"
+            />
+            <button
+              type="submit"
+              disabled={!textInput.trim() || isThinking}
+              className="p-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-40 transition-all cursor-pointer"
+              title="Send question"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </form>
 
-          <div className="flex-1">
-            {isListening ? (
-              <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-semibold text-xs">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
-                <span>Listening to you... Speak in your language</span>
-              </div>
-            ) : transcript ? (
-              <div className="text-zinc-800 dark:text-zinc-200 text-xs italic truncate">
-                &ldquo;{transcript}&rdquo;
-              </div>
-            ) : (
-              <div className="text-zinc-500 text-xs">
-                Click mic and speak your idea or question...
-              </div>
-            )}
+          {/* Voice Row */}
+          <div className="flex items-center gap-3 pt-1 border-t border-zinc-200 dark:border-zinc-700">
+            <button
+              onClick={handleToggleListening}
+              disabled={isThinking}
+              className={`w-10 h-10 rounded-full flex items-center justify-center text-white transition-all shadow-md cursor-pointer shrink-0 disabled:opacity-50 ${
+                isListening
+                  ? 'bg-rose-600 animate-bounce ring-4 ring-rose-300'
+                  : 'bg-amber-600 hover:bg-amber-700 active:scale-95'
+              }`}
+              title={isListening ? 'Stop listening' : 'Start speaking'}
+            >
+              {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </button>
+
+            <div className="flex-1">
+              {isListening ? (
+                <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-semibold text-xs">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
+                  <span>Listening... Speak your question</span>
+                </div>
+              ) : transcript ? (
+                <div className="text-zinc-800 dark:text-zinc-200 text-xs italic truncate">
+                  &ldquo;{transcript}&rdquo;
+                </div>
+              ) : (
+                <div className="text-zinc-500 text-xs">
+                  Click mic to speak, or type above
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
