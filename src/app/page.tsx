@@ -45,7 +45,6 @@ import { ViabilityRadarChart } from '@/components/ViabilityRadarChart';
 import { TeamModal } from '@/components/TeamModal';
 import { VoiceAssistantModal } from '@/components/VoiceAssistantModal';
 import { InvestorMatcherModal } from '@/components/InvestorMatcherModal';
-import { AiSettingsModal, AI_API_KEY_STORAGE_KEY } from '@/components/AiSettingsModal';
 import { AiAnalysisResponse } from '@/app/api/analyze-idea/route';
 
 export default function HomePage() {
@@ -53,7 +52,6 @@ export default function HomePage() {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [isInvestorModalOpen, setIsInvestorModalOpen] = useState(false);
-  const [isAiSettingsOpen, setIsAiSettingsOpen] = useState(false);
 
   // Flexible User Location State (No hardcoded city locks or popular businesses)
   const [locationInput, setLocationInput] = useState<string>('Satara, Maharashtra');
@@ -68,7 +66,6 @@ export default function HomePage() {
 
   // Live AI Generated Feasibility State
   const [aiReport, setAiReport] = useState<AiAnalysisResponse | null>(null);
-  const [aiEngineUsed, setAiEngineUsed] = useState<string>('gemini-2.5-flash');
 
   // Profile Save Feedback
   const [isSavingToProfile, setIsSavingToProfile] = useState(false);
@@ -225,15 +222,12 @@ export default function HomePage() {
     const t3 = setTimeout(() => setAnalysisStep(4), 2100);
 
     try {
-      const userApiKey = typeof window !== 'undefined' ? localStorage.getItem(AI_API_KEY_STORAGE_KEY) : '';
-
       const res = await fetch('/api/analyze-idea', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           idea: query,
-          location: locationInput.trim() || 'India',
-          userApiKey
+          location: locationInput.trim() || 'India'
         })
       });
 
@@ -244,7 +238,6 @@ export default function HomePage() {
 
       if (json.success && json.data) {
         setAiReport(json.data);
-        setAiEngineUsed(json.engine || 'Gemini 2.5 Flash');
         setHasAnalyzed(true);
 
         setChatResponses([
@@ -308,8 +301,6 @@ export default function HomePage() {
     setIsChatThinking(true);
 
     try {
-      const userApiKey = typeof window !== 'undefined' ? localStorage.getItem(AI_API_KEY_STORAGE_KEY) || '' : '';
-
       const res = await fetch('/api/advisory-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -331,8 +322,7 @@ export default function HomePage() {
             eligibleSchemes: aiReport?.eligibleSchemes || [],
             matchedInvestors: aiReport?.matchedInvestors || []
           },
-          language: currentLang,
-          userApiKey
+          language: currentLang
         })
       });
 
@@ -389,16 +379,6 @@ export default function HomePage() {
                 <Award className="w-3.5 h-3.5 text-amber-300" />
                 <span>FinFeasibility: AI Enterprise Modeling & Investor Network</span>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setIsAiSettingsOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-all cursor-pointer"
-                title="Configure Gemini API Key"
-              >
-                <Cpu className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                <span>AI Engine Settings</span>
-              </button>
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
@@ -684,7 +664,7 @@ export default function HomePage() {
                       Active AI Appraisal
                     </span>
                     <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">
-                      {aiEngineUsed}
+                      Bank-Grade Appraisal
                     </span>
                   </div>
                   <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
@@ -1132,7 +1112,7 @@ export default function HomePage() {
         {/* Feature Navigation Links */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
           <Link
-            href="/market-intelligence"
+            href={`/market-intelligence?idea=${encodeURIComponent(ideaInputValue || aiReport?.title || 'food stall')}&location=${encodeURIComponent(locationInput)}`}
             className="group p-5 rounded-3xl bg-white/90 dark:bg-zinc-900/90 border border-emerald-500/20 shadow-sm hover:border-emerald-500/50 hover:shadow-lg transition-all card-3d-glow"
           >
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
@@ -1222,11 +1202,6 @@ export default function HomePage() {
           eligibleSchemes: aiReport?.eligibleSchemes,
           matchedInvestors: aiReport?.matchedInvestors
         }}
-      />
-
-      <AiSettingsModal
-        isOpen={isAiSettingsOpen}
-        onClose={() => setIsAiSettingsOpen(false)}
       />
 
       {/* Investor Pitch Modal */}

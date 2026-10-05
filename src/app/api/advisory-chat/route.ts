@@ -132,6 +132,12 @@ FinFeasibility's AI appraisal shows an estimated net margin of ${margin} with ${
 Feel free to ask for specific licensing steps, machine specifications, or bank interview tips!`;
 }
 
+import dns from 'node:dns';
+
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch (e) {}
+
 export async function POST(req: NextRequest) {
   try {
     const body: AdvisoryChatRequest = await req.json();
@@ -141,7 +147,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Please provide a valid query message.' }, { status: 400 });
     }
 
-    const apiKey = userApiKey?.trim() || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const apiKey = (userApiKey && userApiKey.trim().length > 10)
+      ? userApiKey.trim()
+      : (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
 
     if (apiKey) {
       try {
@@ -196,17 +204,36 @@ USER QUERY:
 
 Provide your direct, helpful, expert answer as FinMitra:`;
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: systemPrompt,
-        });
+        const CANDIDATE_MODELS = [
+          'gemini-flash-lite-latest',
+          'gemini-3.6-flash',
+          'gemini-3.1-flash-lite',
+          'gemini-3.8-flash'
+        ];
 
-        const reply = response.text?.trim();
+        let reply = '';
+        let modelUsed = '';
+        for (const model of CANDIDATE_MODELS) {
+          try {
+            const response = await ai.models.generateContent({
+              model,
+              contents: systemPrompt,
+            });
+            if (response && response.text) {
+              reply = response.text.trim();
+              modelUsed = model;
+              break;
+            }
+          } catch (modelErr: any) {
+            console.warn(`Advisory chat model ${model} notice:`, modelErr?.message || modelErr);
+          }
+        }
+
         if (reply && reply.length > 5) {
           return NextResponse.json({
             success: true,
             reply,
-            engine: 'Gemini 2.5 Flash'
+            engine: modelUsed
           });
         }
       } catch (genAiError: any) {

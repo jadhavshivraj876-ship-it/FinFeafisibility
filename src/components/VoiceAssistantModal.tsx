@@ -172,8 +172,6 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
     setIsThinking(true);
 
     try {
-      const userApiKey = typeof window !== 'undefined' ? localStorage.getItem('finfeasibility_gemini_api_key') || '' : '';
-
       const res = await fetch('/api/advisory-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -181,8 +179,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
           message: trimmed,
           history: messages.map(m => ({ sender: m.sender === 'assistant' ? 'ai' : 'user', text: m.text })),
           context: activeContext,
-          language: currentLang,
-          userApiKey
+          language: currentLang
         })
       });
 
