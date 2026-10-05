@@ -29,6 +29,17 @@ interface InvestorMatcherModalProps {
   projectCost: number;
   dscr: number;
   subsidyPercent: number;
+  matchedInvestors?: Array<{
+    id: string;
+    name: string;
+    type: string;
+    ticketSizeRange: string;
+    matchScore: number;
+    thesis: string;
+    websiteUrl: string;
+    pitchAdvice: string;
+  }>;
+  domain?: string;
 }
 
 export const InvestorMatcherModal: React.FC<InvestorMatcherModalProps> = ({
@@ -39,14 +50,44 @@ export const InvestorMatcherModal: React.FC<InvestorMatcherModalProps> = ({
   projectCost,
   dscr,
   subsidyPercent,
+  matchedInvestors,
+  domain
 }) => {
   const [selectedType, setSelectedType] = useState<string>('all');
   const [pitchModalInvestor, setPitchModalInvestor] = useState<InvestorMatchResult | null>(null);
   const [copied, setCopied] = useState(false);
 
   const matchedResults = useMemo(() => {
-    return matchInvestorsForBusiness(business.category, district.state, district.name);
-  }, [business.category, district.state, district.name]);
+    if (matchedInvestors && matchedInvestors.length > 0) {
+      return matchedInvestors.map(inv => ({
+        investor: {
+          id: inv.id,
+          name: inv.name,
+          type: (inv.type as any) || 'Debt & Working Capital Fund',
+          logoBadge: '🤝 ' + inv.name.slice(0, 2).toUpperCase(),
+          focusCategories: [business.category, domain || 'MSME Enterprise'],
+          focusSectors: [domain || business.title],
+          ticketSizeRange: inv.ticketSizeRange,
+          minTicketInr: 100000,
+          maxTicketInr: 50000000,
+          coveredRegions: [district.state, 'Pan-India'],
+          contactPerson: `${inv.name} Investment Committee`,
+          contactEmail: `deals@${inv.name.toLowerCase().replace(/[^a-z]/g, '') || 'invest'}.in`,
+          contactPhone: '+91 22 4000 8000',
+          websiteUrl: inv.websiteUrl,
+          officeLocation: `${district.state} & Regional Financial Centers`,
+          description: inv.thesis,
+          portfolioHighlights: [business.title, `${domain || 'MSME'} Sector Deployment`]
+        },
+        matchScore: inv.matchScore,
+        matchReasons: [
+          inv.pitchAdvice,
+          `Directly matched to ${domain || business.title} at ₹${Math.round(projectCost / 100000)}L scale`
+        ]
+      }));
+    }
+    return matchInvestorsForBusiness(business.category, district.state, district.name, domain, projectCost);
+  }, [matchedInvestors, business.category, business.title, district.state, district.name, domain, projectCost]);
 
   const filteredResults = useMemo(() => {
     if (selectedType === 'all') return matchedResults;

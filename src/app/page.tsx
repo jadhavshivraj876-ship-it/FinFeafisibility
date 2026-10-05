@@ -60,6 +60,7 @@ export default function HomePage() {
 
   // Enterprise Model Idea State (Empty by default)
   const [ideaInputValue, setIdeaInputValue] = useState<string>('');
+  const [inputError, setInputError] = useState<string | null>(null);
   const [hasAnalyzed, setHasAnalyzed] = useState<boolean>(false);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analysisStep, setAnalysisStep] = useState<number>(0);
@@ -211,7 +212,16 @@ export default function HomePage() {
   // Trigger Real AI Analysis via /api/analyze-idea
   const handleRunAiAnalysis = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const query = ideaInputValue.trim() || 'High-Value Agro Processing Unit';
+    const cleanQuery = ideaInputValue.trim();
+    const alphaChars = cleanQuery.replace(/[^a-zA-Z]/g, '');
+
+    if (alphaChars.length < 3) {
+      setInputError('Please enter a valid enterprise idea with at least 3 letters (e.g. Cold Pressed Oil Unit, Bakery Shop, EV Charging Station, Dairy Farm).');
+      return;
+    }
+
+    setInputError(null);
+    const query = cleanQuery;
 
     setIsAnalyzing(true);
     setAnalysisStep(1);
@@ -460,15 +470,23 @@ export default function HomePage() {
                   <input
                     type="text"
                     value={ideaInputValue}
-                    onChange={(e) => setIdeaInputValue(e.target.value)}
+                    onChange={(e) => {
+                      setIdeaInputValue(e.target.value);
+                      if (inputError) setInputError(null);
+                    }}
                     placeholder="e.g. Organic Honey Processing, Cold Pressed Oil, Bamboo Products, Solar Cold Storage..."
-                    className="w-full p-3.5 pl-4 pr-10 rounded-2xl bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-emerald-500 outline-hidden"
+                    className={`w-full p-3.5 pl-4 pr-10 rounded-2xl bg-zinc-50 dark:bg-zinc-800/80 border text-zinc-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-emerald-500 outline-hidden transition-colors ${
+                      inputError ? 'border-rose-400 dark:border-rose-500/60 ring-1 ring-rose-400' : 'border-zinc-200 dark:border-zinc-700'
+                    }`}
                     disabled={isAnalyzing}
                   />
                   {ideaInputValue.trim() && (
                     <button
                       type="button"
-                      onClick={() => setIdeaInputValue('')}
+                      onClick={() => {
+                        setIdeaInputValue('');
+                        if (inputError) setInputError(null);
+                      }}
                       className="absolute right-3 top-3.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-xs font-bold cursor-pointer"
                     >
                       Clear
@@ -485,6 +503,14 @@ export default function HomePage() {
                   <span>{isAnalyzing ? 'Analyzing with AI...' : 'Analyze Feasibility'}</span>
                 </button>
               </form>
+
+              {/* Inline Validation Alert */}
+              {inputError && (
+                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium animate-in fade-in slide-in-from-top-1">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                  <span>{inputError}</span>
+                </div>
+              )}
 
               {/* Real-time Sector & Domain Classifier Preview */}
               <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -1241,6 +1267,8 @@ export default function HomePage() {
           projectCost={financialAnalysis.projectCost}
           dscr={financialAnalysis.averageDscr}
           subsidyPercent={aiReport.eligibleSchemes[0]?.subsidyPercent || 35}
+          matchedInvestors={aiReport.matchedInvestors}
+          domain={aiReport.domain}
         />
       )}
     </div>

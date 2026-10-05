@@ -57,8 +57,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { idea, location, userApiKey } = body;
 
-    if (!idea || typeof idea !== 'string') {
-      return NextResponse.json({ error: 'Please provide a business concept to analyze.' }, { status: 400 });
+    const cleanIdea = (idea && typeof idea === 'string') ? idea.trim() : '';
+    const alphaChars = cleanIdea.replace(/[^a-zA-Z]/g, '');
+
+    if (alphaChars.length < 3) {
+      return NextResponse.json({ 
+        error: 'Please enter a valid enterprise idea with at least 3 letters (e.g. Cold Pressed Oil Unit, Bakery Shop, EV Charging Station, Dairy Farm).' 
+      }, { status: 400 });
     }
 
     const targetLocation = (location && typeof location === 'string') ? location.trim() : 'India';
@@ -141,10 +146,22 @@ Return ONLY a valid, raw JSON object (NO markdown fences, NO backticks, NO surro
       "subsidyPercent": 35,
       "description": "Eligibility and subsidy terms"
     }
+  ],
+  "matchedInvestors": [
+    {
+      "id": "slug-name",
+      "name": "Exact Name of Real Verified VC / Angel Network / Institutional MSME Fund / Micro-Lender in India relevant to this domain & ticket size",
+      "type": "Venture Capital | Angel Network | Debt & Working Capital Fund | Government & Institutional Fund | Seed Accelerator",
+      "ticketSizeRange": "Realistic range matching this project cost (e.g., ₹50k-₹10L for stalls/shops, ₹50L-₹5Cr for manufacturing/fuel/scale)",
+      "matchScore": 95,
+      "thesis": "Specific reason why this fund or financing institution is an exact match for this business model in ${targetLocation}.",
+      "websiteUrl": "https://...",
+      "pitchAdvice": "Concrete, actionable advice on what this investor evaluates during the pitch for this specific concept."
+    }
   ]
 }
 
-Make all monetary values realistic Indian Rupee numbers (integers only, no symbols). Ensure sum of capexItems equals projectCost.`;
+Make all monetary values realistic Indian Rupee numbers (integers only, no symbols). Ensure sum of capexItems equals projectCost. Include 3-4 realistic matchedInvestors.`;
 
         let responseText = '';
         let modelUsed = '';
@@ -174,12 +191,23 @@ Make all monetary values realistic Indian Rupee numbers (integers only, no symbo
 
           const parsed = JSON.parse(cleaned);
 
-          // Match real verified investors from our database
-          const realMatches = matchRealInvestors(parsed.category, parsed.domain, targetLocation, parsed.projectCost);
+          // Use dynamically synthesized investors from AI if provided, or match from our verified database
+          const dynamicInvestors = Array.isArray(parsed.matchedInvestors) && parsed.matchedInvestors.length >= 2
+            ? parsed.matchedInvestors.map((inv: any, i: number) => ({
+                id: inv.id || `inv-${i + 1}`,
+                name: inv.name || 'Verified Sector Fund',
+                type: inv.type || 'Angel Network',
+                ticketSizeRange: inv.ticketSizeRange || `₹${Math.round(parsed.projectCost * 0.4 / 100000)}L - ₹${Math.round(parsed.projectCost * 2 / 100000)}L`,
+                matchScore: Number(inv.matchScore) || (96 - i * 3),
+                thesis: inv.thesis || `Active investment thesis backing viable ${parsed.domain} enterprises.`,
+                websiteUrl: (inv.websiteUrl && inv.websiteUrl.startsWith('http')) ? inv.websiteUrl : 'https://www.startupindia.gov.in',
+                pitchAdvice: inv.pitchAdvice || `Highlight clear DSCR and hyper-local supply chain in ${targetLocation}.`
+              }))
+            : matchRealInvestors(parsed.category, parsed.domain, targetLocation, parsed.projectCost);
 
           const result: AiAnalysisResponse = {
             ...parsed,
-            matchedInvestors: realMatches,
+            matchedInvestors: dynamicInvestors,
           };
 
           return NextResponse.json({ success: true, data: result, engine: modelUsed });
@@ -211,28 +239,39 @@ function matchRealInvestors(
   projectCost: number
 ) {
   const all = REAL_INVESTORS_DATABASE;
-  
-  // Score investors by sector relevance
-  const scored = all.map(inv => {
-    let score = 70;
-    const desc = (inv.description + ' ' + inv.focusSectors.join(' ')).toLowerCase();
-    const catLower = (category || '').toLowerCase();
-    const domLower = (domain || '').toLowerCase();
+  const cost = projectCost || 1500000;
+  const catLower = (category || '').toLowerCase();
+  const domLower = (domain || '').toLowerCase();
 
-    if (desc.includes(catLower)) score += 15;
-    if (desc.includes(domLower)) score += 12;
-    if (inv.focusSectors.some(s => domLower.includes(s.toLowerCase()) || catLower.includes(s.toLowerCase()))) score += 10;
-    if (projectCost <= 2500000 && (inv.type.includes('Micro') || inv.type.includes('Debt'))) score += 5;
+  // Score investors by sector relevance and ticket scale
+  const scored = all.map(inv => {
+    let score = 65;
+    const invText = (inv.description + ' ' + inv.focusSectors.join(' ') + ' ' + inv.focusCategories.join(' ')).toLowerCase();
+
+    // Scale appropriateness
+    if (cost >= inv.minTicketInr && cost <= inv.maxTicketInr) {
+      score += 20;
+    } else if (cost < inv.minTicketInr && inv.type.includes('Debt')) {
+      score += 15;
+    }
+
+    // Direct domain and sector keywords
+    const keywords = domLower.split(/\s+/).filter(w => w.length > 3);
+    if (keywords.some(k => invText.includes(k))) {
+      score += 18;
+    } else if (invText.includes(catLower)) {
+      score += 10;
+    }
 
     return {
       id: inv.id,
       name: inv.name,
       type: inv.type,
       ticketSizeRange: inv.ticketSizeRange,
-      matchScore: Math.min(98, score),
+      matchScore: Math.min(98, Math.max(70, score)),
       thesis: inv.description,
       websiteUrl: inv.websiteUrl,
-      pitchAdvice: `Highlight your hyper-local supply chain in ${location}, projected ${Math.round(projectCost / 100000)}L CapEx asset-backing, and bank DSCR viability.`
+      pitchAdvice: `Highlight your hyper-local supply chain in ${location}, projected ₹${Math.round(cost / 100000)}L CapEx asset-backing, and bank DSCR viability.`
     };
   });
 

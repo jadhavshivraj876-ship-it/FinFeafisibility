@@ -53,6 +53,7 @@ function MarketIntelligenceContent() {
   // Live dynamic market intelligence state
   const [marketData, setMarketData] = useState<MarketIntelligenceResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [inputError, setInputError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'part1' | 'part2' | 'part3' | 'part4' | 'part5'>('all');
 
   // Matched district for the SVG Map
@@ -66,14 +67,21 @@ function MarketIntelligenceContent() {
 
   // Fetch Market Intelligence
   const fetchMarketIntelligence = async (idea: string, location: string) => {
-    if (!idea.trim()) return;
+    const clean = (idea || '').trim();
+    const alphaChars = clean.replace(/[^a-zA-Z]/g, '');
+    if (alphaChars.length < 3) {
+      setInputError('Please enter a valid enterprise concept with at least 3 letters (e.g. food stall, petrol pump, cold pressed oil).');
+      return;
+    }
+    setInputError(null);
+
     setIsLoading(true);
     try {
       const res = await fetch('/api/market-intelligence', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          idea: idea.trim(),
+          idea: clean,
           location: location.trim() || 'Satara, Maharashtra'
         })
       });
@@ -152,9 +160,14 @@ function MarketIntelligenceContent() {
                 <input
                   type="text"
                   value={ideaInput}
-                  onChange={(e) => setIdeaInput(e.target.value)}
+                  onChange={(e) => {
+                    setIdeaInput(e.target.value);
+                    if (inputError) setInputError(null);
+                  }}
                   placeholder="e.g. food stall, petrol pump, cold pressed oil..."
-                  className="w-full pl-4 pr-10 py-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                  className={`w-full pl-4 pr-10 py-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/80 border text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 ${
+                    inputError ? 'border-rose-400 dark:border-rose-500/60 ring-1 ring-rose-400' : 'border-zinc-200 dark:border-zinc-700'
+                  }`}
                 />
               </div>
             </div>
@@ -204,6 +217,14 @@ function MarketIntelligenceContent() {
               </button>
             </div>
           </form>
+
+          {/* Validation Alert */}
+          {inputError && (
+            <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium animate-in fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+              <span>{inputError}</span>
+            </div>
+          )}
         </section>
 
         {/* Loading Skeleton */}

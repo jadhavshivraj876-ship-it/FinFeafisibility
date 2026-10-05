@@ -12,8 +12,133 @@ export interface DomainClassification {
  * Extract the business domain/industry sector adaptively from any user-provided concept.
  */
 export function extractBusinessDomain(userQuery: string): DomainClassification {
-  const q = userQuery.toLowerCase().trim();
+  const clean = (userQuery || '').trim();
+  const alphaChars = clean.replace(/[^a-zA-Z]/g, '');
 
+  // If query is empty, only punctuation (like ','), or less than 3 alphabetic letters
+  if (alphaChars.length < 3) {
+    return {
+      domain: 'Enter an Enterprise Concept',
+      category: 'Food Processing',
+      badgeColor: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700',
+      description: 'Type at least 3 letters of your business idea (e.g. Cold Pressed Oil, EV Charging, Dairy Processing).',
+      tags: ['Awaiting Input', 'Type Your Idea']
+    };
+  }
+
+  const q = clean.toLowerCase();
+
+  // 1. Food Stall, QSR, Restaurant, Bakery, Street Food
+  if (
+    q.includes('stall') ||
+    q.includes('kiosk') ||
+    q.includes('tea') ||
+    q.includes('chai') ||
+    q.includes('coffee') ||
+    q.includes('cafe') ||
+    q.includes('restaurant') ||
+    q.includes('bakery') ||
+    q.includes('snack') ||
+    q.includes('fast food') ||
+    q.includes('cart') ||
+    q.includes('dhaba') ||
+    q.includes('canteen') ||
+    q.includes('catering')
+  ) {
+    return {
+      domain: 'Quick Service Retail & Food Services',
+      category: 'Food Processing',
+      badgeColor: 'bg-orange-500/10 text-orange-600 border-orange-500/30 dark:text-orange-400',
+      description: 'High-footfall food and beverage retail, daily cash turnaround, and micro-kiosk operations.',
+      tags: ['QSR Food', 'PM SVANidhi', 'Mudra Shishu', 'Daily Cashflow']
+    };
+  }
+
+  // 2. Fuel, Petrol Pump, Automotive, EV, Transport
+  if (
+    q.includes('petrol') ||
+    q.includes('fuel') ||
+    q.includes('diesel') ||
+    q.includes('cng') ||
+    q.includes('pump') ||
+    q.includes('ev') ||
+    q.includes('charging') ||
+    q.includes('automobile') ||
+    q.includes('garage') ||
+    q.includes('workshop') ||
+    q.includes('auto') ||
+    q.includes('service station')
+  ) {
+    return {
+      domain: 'Automotive Retail, Fuel & EV Infrastructure',
+      category: 'Rural Services',
+      badgeColor: 'bg-blue-500/10 text-blue-600 border-blue-500/30 dark:text-blue-400',
+      description: 'Transit commercial hubs, automotive services, green fuel and charging infrastructure.',
+      tags: ['Energy Retail', 'PESO Regulated', 'Commercial Term Loan', 'High Asset Value']
+    };
+  }
+
+  // 3. Tech, Software, SaaS, IT, Digital, Web
+  if (
+    q.includes('software') ||
+    q.includes('saas') ||
+    q.includes('app') ||
+    q.includes('tech') ||
+    q.includes('digital') ||
+    q.includes('ai') ||
+    q.includes('cyber') ||
+    q.includes('coding') ||
+    q.includes('web') ||
+    q.includes('it services')
+  ) {
+    return {
+      domain: 'Technology, SaaS & Digital Services',
+      category: 'Rural Services',
+      badgeColor: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/30 dark:text-indigo-400',
+      description: 'Digital solutions, software platforms, and tech-enabled enterprise automation.',
+      tags: ['SaaS', 'Startup India', 'Angel/VC Eligible', 'High Scalability']
+    };
+  }
+
+  // 4. Healthcare, Medical, Clinic, Pharmacy
+  if (
+    q.includes('clinic') ||
+    q.includes('hospital') ||
+    q.includes('pharma') ||
+    q.includes('medical') ||
+    q.includes('health') ||
+    q.includes('doctor') ||
+    q.includes('diagnostic') ||
+    q.includes('ayurved')
+  ) {
+    return {
+      domain: 'Healthcare, Diagnostics & Wellness',
+      category: 'Rural Services',
+      badgeColor: 'bg-rose-500/10 text-rose-600 border-rose-500/30 dark:text-rose-400',
+      description: 'Primary healthcare centers, diagnostic clinics, generic pharmacies, and wellness centers.',
+      tags: ['Healthcare', 'Drug License', 'CGTMSE Backed', 'Essential Service']
+    };
+  }
+
+  // 5. Personal Care, Salon, Beauty, Spa
+  if (
+    q.includes('salon') ||
+    q.includes('parlor') ||
+    q.includes('barber') ||
+    q.includes('beauty') ||
+    q.includes('hair') ||
+    q.includes('spa')
+  ) {
+    return {
+      domain: 'Personal Care & Wellness Services',
+      category: 'Rural Services',
+      badgeColor: 'bg-pink-500/10 text-pink-600 border-pink-500/30 dark:text-pink-400',
+      description: 'Modern grooming, beauty care, cosmetology, and community wellness services.',
+      tags: ['Wellness', 'Mudra Kishore', 'Fast Payback', 'Service MSME']
+    };
+  }
+
+  // 6. Solar & Renewable Energy
   if (
     q.includes('solar') ||
     q.includes('energy') ||
@@ -23,7 +148,6 @@ export function extractBusinessDomain(userQuery: string): DomainClassification {
     q.includes('pellet') ||
     q.includes('cold storage') ||
     q.includes('cold room') ||
-    q.includes('charging') ||
     q.includes('battery') ||
     q.includes('renewable')
   ) {
@@ -36,6 +160,7 @@ export function extractBusinessDomain(userQuery: string): DomainClassification {
     };
   }
 
+  // 7. Handicrafts, Textiles & Artisanal
   if (
     q.includes('bamboo') ||
     q.includes('jute') ||
@@ -57,10 +182,11 @@ export function extractBusinessDomain(userQuery: string): DomainClassification {
       category: 'Handicraft & Artisan',
       badgeColor: 'bg-purple-500/10 text-purple-600 border-purple-500/30 dark:text-purple-400',
       description: 'GI-tagged rural artisan crafts, handlooms, and sustainable bio-fiber value addition.',
-      tags: ['Artisan', 'Handloom', 'PM Vishwakarma', 'PMEGP']
+      tags: ['Artisan', 'Handloom', 'PM Vishwakarma', 'PMEGP 35%']
     };
   }
 
+  // 8. Custom Hiring, Drones & Logistics
   if (
     q.includes('drone') ||
     q.includes('service') ||
@@ -76,12 +202,13 @@ export function extractBusinessDomain(userQuery: string): DomainClassification {
     return {
       domain: 'Agri-Tech, Custom Hiring & Farm Services',
       category: 'Rural Services',
-      badgeColor: 'bg-blue-500/10 text-blue-600 border-blue-500/30 dark:text-blue-400',
+      badgeColor: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/30 dark:text-cyan-400',
       description: 'Shared mechanization, precision farming services, and rural logistics networks.',
       tags: ['Agri-Tech', 'Kisan Drone', 'SMAM Subsidy', 'Mudra']
     };
   }
 
+  // 9. Bio-Inputs, Compost, Poultry, Animal Husbandry
   if (
     q.includes('compost') ||
     q.includes('vermicompost') ||
@@ -89,6 +216,8 @@ export function extractBusinessDomain(userQuery: string): DomainClassification {
     q.includes('feed') ||
     q.includes('poultry') ||
     q.includes('cattle') ||
+    q.includes('dairy') ||
+    q.includes('milk') ||
     q.includes('seed') ||
     q.includes('coir') ||
     q.includes('pith') ||
@@ -107,7 +236,7 @@ export function extractBusinessDomain(userQuery: string): DomainClassification {
     };
   }
 
-  // Default to Food Processing
+  // Default to Commercial Manufacturing & Value Addition
   return {
     domain: 'Agro-Food Processing & Value Addition',
     category: 'Food Processing',

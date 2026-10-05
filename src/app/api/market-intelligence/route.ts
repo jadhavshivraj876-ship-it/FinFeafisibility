@@ -55,9 +55,17 @@ export interface MarketIntelligenceResponse {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { idea, location, userApiKey } = body;
+    const { idea, location, userApiKey } = body || {};
+    const cleanIdea = (idea && typeof idea === 'string') ? idea.trim() : '';
+    const alphaChars = cleanIdea.replace(/[^a-zA-Z]/g, '');
 
-    const targetIdea = (idea && typeof idea === 'string' && idea.trim().length > 0) ? idea.trim() : 'Agro & Food Enterprise';
+    if (alphaChars.length < 3) {
+      return NextResponse.json({ 
+        error: 'Please enter a valid enterprise concept with at least 3 letters (e.g. Cold Pressed Oil Unit, EV Charging Station, Dairy Farm, Bakery).' 
+      }, { status: 400 });
+    }
+
+    const targetIdea = cleanIdea;
     const targetLocation = (location && typeof location === 'string' && location.trim().length > 0) ? location.trim() : 'Satara, Maharashtra';
 
     const apiKey = (userApiKey && userApiKey.trim().length > 10) 
