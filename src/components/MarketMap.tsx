@@ -59,7 +59,7 @@ export const MarketMap: React.FC<MarketMapProps> = ({ district }) => {
         </div>
 
         {/* Filter buttons */}
-        <div className="flex items-center gap-1.5 text-xs">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
           <Layers className="w-3.5 h-3.5 text-zinc-400 mr-1" />
           {(['All', 'Mandi', 'ColdStorage', 'DIC Office', 'Competitor'] as const).map((filter) => (
             <button

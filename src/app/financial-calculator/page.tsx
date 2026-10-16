@@ -12,7 +12,11 @@ import {
   DollarSign, 
   Percent, 
   Calendar,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Copy,
+  Check,
+  Sparkles,
+  AlertTriangle
 } from 'lucide-react';
 import { Language } from '@/types';
 import { performFinancialAnalysis } from '@/lib/financialCalculations';
@@ -26,6 +30,7 @@ export default function FinancialCalculatorPage() {
   const [currentLang, setCurrentLang] = useState<Language>('en');
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // Custom Financial Form Inputs
   const [projectCost, setProjectCost] = useState<number>(1250000);
@@ -71,6 +76,42 @@ export default function FinancialCalculatorPage() {
     monthlyOverheads
   ]);
 
+  const handleApplyPreset = (preset: {
+    name: string;
+    cost: number;
+    margin: number;
+    subsidy: number;
+    rate: number;
+    tenure: number;
+    sales: number;
+    rawMaterial: number;
+  }) => {
+    setProjectCost(preset.cost);
+    setOwnContributionPercent(preset.margin);
+    setSubsidyPercent(preset.subsidy);
+    setInterestRate(preset.rate);
+    setTenureYears(preset.tenure);
+    setMonthlySales(preset.sales);
+    setMonthlyRawMaterial(preset.rawMaterial);
+    setToastMessage({ text: `✓ Applied "${preset.name}" preset configuration!`, type: 'success' });
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleCopySummary = () => {
+    const text = `FinFeasibility Financial Appraisal Summary:
+• Total Project Cost: ₹${projectCost.toLocaleString('en-IN')}
+• Promoter Margin (${ownContributionPercent}%): ₹${analysis.ownContribution.toLocaleString('en-IN')}
+• Capital Subsidy (${subsidyPercent}%): ₹${analysis.subsidyAmount.toLocaleString('en-IN')}
+• Net Bank Loan: ₹${analysis.netBankLoan.toLocaleString('en-IN')}
+• Monthly EMI: ₹${analysis.monthlyEmi.toLocaleString('en-IN')}/mo (Tenure: ${tenureYears} yrs @ ${interestRate}%)
+• Average DSCR: ${analysis.averageDscr} (${analysis.dscrRating})
+• Break-Even Point: ${analysis.breakEvenPercentage}% Capacity
+• Bank Viability: ${analysis.isBankViable ? 'Approved / Bank Viable' : 'Caution / High Debt'}`;
+    navigator.clipboard.writeText(text);
+    setToastMessage({ text: '✓ Financial appraisal summary copied to clipboard!', type: 'success' });
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-zinc-950">
       <Navbar
@@ -82,17 +123,143 @@ export default function FinancialCalculatorPage() {
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8">
         {/* Header */}
-        <div className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl border border-emerald-100 dark:border-zinc-800 shadow-sm space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-semibold">
-            <Calculator className="w-3.5 h-3.5 text-amber-600" />
-            <span>Module 3: Smart Financial Calculator & Bank Loan Structuring</span>
+        <div className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl border border-emerald-100 dark:border-zinc-800 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-semibold w-fit">
+              <Calculator className="w-3.5 h-3.5 text-amber-600" />
+              <span>Module 3: Smart Financial Calculator & Bank Loan Structuring</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCopySummary}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold transition-all cursor-pointer w-fit"
+            >
+              <Copy className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Copy Financial Summary</span>
+            </button>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
-            Bank Loan, EMI, Subsidy & DSCR Amortization
-          </h1>
-          <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 max-w-3xl leading-relaxed">
-            Configure capital expenditure, calculate your 5%-10% promoter margin, evaluate government capital subsidy savings, and check bank Debt Service Coverage Ratio (DSCR) eligibility.
-          </p>
+
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
+              Bank Loan, EMI, Subsidy & DSCR Amortization
+            </h1>
+            <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 max-w-3xl leading-relaxed mt-1">
+              Configure capital expenditure, calculate your 5%-10% promoter margin, evaluate government capital subsidy savings, and check bank Debt Service Coverage Ratio (DSCR) eligibility.
+            </p>
+          </div>
+
+          {/* Quick Presets Bar */}
+          <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-zinc-500 flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-amber-500" />
+              <span>Quick Presets:</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => handleApplyPreset({
+                name: 'PMEGP Agro Processing',
+                cost: 1000000,
+                margin: 10,
+                subsidy: 35,
+                rate: 9.5,
+                tenure: 5,
+                sales: 380000,
+                rawMaterial: 210000
+              })}
+              className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 transition-colors cursor-pointer"
+            >
+              PMEGP Agro (₹10L)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleApplyPreset({
+                name: 'Mudra Kishore Enterprise',
+                cost: 500000,
+                margin: 10,
+                subsidy: 0,
+                rate: 9.5,
+                tenure: 5,
+                sales: 220000,
+                rawMaterial: 110000
+              })}
+              className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-semibold hover:bg-amber-100 transition-colors cursor-pointer"
+            >
+              Mudra Kishore (₹5L)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleApplyPreset({
+                name: 'PMFME Food Processing Unit',
+                cost: 1500000,
+                margin: 10,
+                subsidy: 35,
+                rate: 9.5,
+                tenure: 5,
+                sales: 550000,
+                rawMaterial: 300000
+              })}
+              className="px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 text-xs font-semibold hover:bg-teal-100 transition-colors cursor-pointer"
+            >
+              PMFME Processing (₹15L)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleApplyPreset({
+                name: 'Rural Cold Chain Project',
+                cost: 2500000,
+                margin: 10,
+                subsidy: 35,
+                rate: 9.5,
+                tenure: 5,
+                sales: 800000,
+                rawMaterial: 420000
+              })}
+              className="px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300 text-xs font-semibold hover:bg-purple-100 transition-colors cursor-pointer"
+            >
+              Solar Cold Storage (₹25L)
+            </button>
+          </div>
+
+          {/* Feedback Toast Message */}
+          {toastMessage && (
+            <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200 ${
+              toastMessage.type === 'success' 
+                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700'
+                : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-700'
+            }`}>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{toastMessage.text}</span>
+            </div>
+          )}
+
+          {/* Live DSCR Bank Viability Status Alert */}
+          <div className={`p-3.5 rounded-2xl border flex items-start gap-2.5 text-xs ${
+            analysis.isBankViable
+              ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200'
+              : 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
+          }`}>
+            {analysis.isBankViable ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            )}
+            <div>
+              <div className="font-bold">
+                {analysis.isBankViable 
+                  ? `Bank Credit Viable (Average DSCR: ${analysis.averageDscr})`
+                  : `Caution: Borderline DSCR (${analysis.averageDscr})`}
+              </div>
+              <p className="text-[11px] opacity-90 mt-0.5 leading-relaxed">
+                {analysis.isBankViable 
+                  ? `Your Debt Service Coverage Ratio meets commercial bank standards (minimum 1.40). Net monthly loan EMI is ₹${analysis.monthlyEmi.toLocaleString('en-IN')}.`
+                  : `Commercial banks typically require DSCR ≥ 1.40 for micro-enterprise loan approval. Consider increasing promoter margin or adjusting revenue projections.`}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* 4 Key Output Cards */}

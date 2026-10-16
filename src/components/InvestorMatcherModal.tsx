@@ -260,16 +260,22 @@ Location: ${district.name}, ${district.state}`;
                       </a>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5 text-zinc-400" />
-                      <span>{inv.contactPhone}</span>
+                      <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                      <a 
+                        href={`tel:${inv.contactPhone.replace(/[^0-9+]/g, '')}`} 
+                        className="hover:underline text-zinc-700 dark:text-zinc-300 hover:text-emerald-600 font-medium transition-colors"
+                        title={`Call ${inv.name}`}
+                      >
+                        {inv.contactPhone}
+                      </a>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Globe className="w-3.5 h-3.5 text-zinc-400" />
                       <a
                         href={inv.websiteUrl}
                         target="_blank"
-                        rel="noreferrer"
-                        className="hover:underline text-zinc-500 inline-flex items-center gap-0.5"
+                        rel="noopener noreferrer"
+                        className="hover:underline text-zinc-500 hover:text-emerald-600 inline-flex items-center gap-0.5"
                       >
                         <span>Portal</span>
                         <ExternalLink className="w-2.5 h-2.5" />

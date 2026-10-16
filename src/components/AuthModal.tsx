@@ -283,7 +283,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     type="email"
                     value={signInEmail}
                     onChange={(e) => setSignInEmail(e.target.value)}
-                    placeholder="entrepreneur@example.com"
+                    placeholder="entrepreneur@finfeasibility.in"
                     className="w-full p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 outline-hidden"
                     required
                   />
@@ -377,7 +377,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     type="email"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
-                    placeholder="name@gmail.com"
+                    placeholder="entrepreneur@finfeasibility.in"
                     className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 outline-hidden"
                     required
                   />

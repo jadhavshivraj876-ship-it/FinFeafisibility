@@ -25,7 +25,9 @@ import {
   Target,
   BarChart3,
   Building2,
-  Users
+  Users,
+  Copy,
+  Check
 } from 'lucide-react';
 import { DISTRICTS_DATABASE, synthesizeDistrictData } from '@/data/districts';
 import { Language, DistrictData } from '@/types';
@@ -54,7 +56,24 @@ function MarketIntelligenceContent() {
   const [marketData, setMarketData] = useState<MarketIntelligenceResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [inputError, setInputError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'part1' | 'part2' | 'part3' | 'part4' | 'part5'>('all');
+
+  const handleCopyReport = () => {
+    if (!marketData) return;
+    const text = `Market Intelligence Report (FinFeasibility):
+• Concept: ${marketData.idea}
+• Location: ${marketData.location} (${marketData.sector})
+• Market Growth: ${marketData.part1DemandDynamics.marketGrowthRate}
+• Target Customers: ${marketData.part1DemandDynamics.targetCustomerSegments.join(', ')}
+• Nearby Mandis: ${marketData.part2RegionalSituation.nearbyTradingMandis.map(m => m.name).join(', ') || 'District APMC Hub'}
+• Competitor Saturation: ${marketData.part3CompetitorAnalysis.saturationLevel} (${marketData.part3CompetitorAnalysis.unorganizedVsOrganizedRatio})
+• Retail Price Benchmark: ${marketData.part4OfftakeAndPricing.retailPriceBenchmark}
+• Expected Gross Margin: ${marketData.part4OfftakeAndPricing.expectedGrossMargin}`;
+    navigator.clipboard.writeText(text);
+    setToastMessage('✓ Market intelligence report copied to clipboard!');
+    setTimeout(() => setToastMessage(null), 3500);
+  };
 
   // Matched district for the SVG Map
   const currentDistrict: DistrictData = useMemo(() => {
@@ -263,15 +282,34 @@ function MarketIntelligenceContent() {
                 </p>
               </div>
 
-              {/* 1-Click Bridge to Bank Feasibility Analysis */}
-              <Link
-                href={`/?idea=${encodeURIComponent(marketData.idea)}&location=${encodeURIComponent(marketData.location)}`}
-                className="shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
-              >
-                <span>Run Bank Loan Feasibility</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+              {/* Action Buttons: Copy Report & Bridge to Bank Feasibility */}
+              <div className="shrink-0 flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleCopyReport}
+                  className="inline-flex items-center gap-1.5 px-4 py-3 rounded-2xl border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                >
+                  <Copy className="w-4 h-4 text-emerald-600" />
+                  <span>Copy Report</span>
+                </button>
+
+                <Link
+                  href={`/?idea=${encodeURIComponent(marketData.idea)}&location=${encodeURIComponent(marketData.location)}`}
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+                >
+                  <span>Run Bank Feasibility</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
             </div>
+
+            {/* Toast Feedback Message */}
+            {toastMessage && (
+              <div className="p-3.5 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200 shadow-sm">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{toastMessage}</span>
+              </div>
+            )}
 
             {/* PART 1: IDEA MARKET INTELLIGENCE & DEMAND DYNAMICS */}
             <section className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl border border-emerald-500/20 shadow-md space-y-6">

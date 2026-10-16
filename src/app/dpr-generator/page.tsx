@@ -3,7 +3,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   FileSpreadsheet, 
-  RefreshCw
+  RefreshCw,
+  Copy,
+  CheckCircle2
 } from 'lucide-react';
 import { DISTRICTS_DATABASE } from '@/data/districts';
 import { getAllBusinessTemplates, registerCustomBusinessTemplate } from '@/data/businesses';
@@ -25,6 +27,7 @@ export default function DprGeneratorPage() {
   const [currentLang, setCurrentLang] = useState<Language>('en');
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Form parameters
   const [applicantName, setApplicantName] = useState('Shivraj Patil');
@@ -35,6 +38,23 @@ export default function DprGeneratorPage() {
   const [gender] = useState<Gender>('Male');
   const [education] = useState<EntrepreneurProfile['education']>('Graduate/Diploma');
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+
+  const handleCopyDprSummary = () => {
+    const text = `Detailed Project Appraisal Report (FinFeasibility):
+• Applicant: ${applicantName}
+• Enterprise: ${currentBusiness.title} (${domainInfo.domain})
+• Location: ${currentDistrict.name}, ${currentDistrict.state}
+• Total Project Cost: ₹${financials.projectCost.toLocaleString('en-IN')}
+• Eligible Scheme: ${topScheme?.scheme.name || 'PMEGP (KVIC)'}
+• Govt Capital Subsidy (${topScheme?.eligibleSubsidyPercent || 25}%): ₹${financials.subsidyAmount.toLocaleString('en-IN')}
+• Net Bank Term Loan: ₹${financials.netBankLoan.toLocaleString('en-IN')}
+• Monthly EMI: ₹${financials.monthlyEmi.toLocaleString('en-IN')}
+• Average DSCR: ${financials.averageDscr} (${financials.dscrRating})
+• Classification: Micro Enterprise (DIC / MSME Formatted)`;
+    navigator.clipboard.writeText(text);
+    setToastMessage('✓ Bank DPR project appraisal summary copied to clipboard!');
+    setTimeout(() => setToastMessage(null), 3500);
+  };
 
   useEffect(() => {
     if (user?.user_metadata?.full_name) {
@@ -142,14 +162,31 @@ export default function DprGeneratorPage() {
 
         {/* Customization Bar - Hidden when printing */}
         <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-emerald-100 dark:border-zinc-800 shadow-sm space-y-4 print:hidden">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="font-bold text-xs uppercase tracking-wider text-zinc-500">
               Customize DPR Parameters
             </h3>
-            <span className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${domainInfo.badgeColor}`}>
-              Domain: {domainInfo.domain}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${domainInfo.badgeColor}`}>
+                Domain: {domainInfo.domain}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyDprSummary}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-semibold transition-all cursor-pointer shadow-xs"
+              >
+                <Copy className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Copy DPR Summary</span>
+              </button>
+            </div>
           </div>
+
+          {toastMessage && (
+            <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{toastMessage}</span>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
             {/* Applicant Name */}

@@ -54,37 +54,65 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
               <span>Project Team Members</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-white dark:bg-zinc-800 p-2.5 rounded-lg border border-emerald-100 dark:border-zinc-700 shadow-xs text-center">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold mx-auto flex items-center justify-center text-xs mb-1">
+              <a 
+                href="mailto:shivraj.capstone@finfeasibility.in"
+                className="bg-white dark:bg-zinc-800 p-2.5 rounded-lg border border-emerald-100 dark:border-zinc-700 shadow-xs text-center hover:border-emerald-500 transition-colors block group"
+                title="Email Shivraj"
+              >
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold mx-auto flex items-center justify-center text-xs mb-1 group-hover:scale-105 transition-transform">
                   S
                 </div>
-                <div className="font-bold text-zinc-900 dark:text-white text-xs">Shivraj</div>
+                <div className="font-bold text-zinc-900 dark:text-white text-xs group-hover:text-emerald-600 transition-colors">Shivraj</div>
                 <div className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-semibold">I4140</div>
-              </div>
+                <div className="text-[10px] text-zinc-400 mt-1 flex items-center justify-center gap-1">
+                  <span>Contact</span>
+                </div>
+              </a>
 
-              <div className="bg-white dark:bg-zinc-800 p-2.5 rounded-lg border border-emerald-100 dark:border-zinc-700 shadow-xs text-center">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold mx-auto flex items-center justify-center text-xs mb-1">
+              <a 
+                href="mailto:om.capstone@finfeasibility.in"
+                className="bg-white dark:bg-zinc-800 p-2.5 rounded-lg border border-emerald-100 dark:border-zinc-700 shadow-xs text-center hover:border-emerald-500 transition-colors block group"
+                title="Email Om"
+              >
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold mx-auto flex items-center justify-center text-xs mb-1 group-hover:scale-105 transition-transform">
                   O
                 </div>
-                <div className="font-bold text-zinc-900 dark:text-white text-xs">Om</div>
+                <div className="font-bold text-zinc-900 dark:text-white text-xs group-hover:text-emerald-600 transition-colors">Om</div>
                 <div className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-semibold">I4141</div>
-              </div>
+                <div className="text-[10px] text-zinc-400 mt-1 flex items-center justify-center gap-1">
+                  <span>Contact</span>
+                </div>
+              </a>
 
-              <div className="bg-white dark:bg-zinc-800 p-2.5 rounded-lg border border-emerald-100 dark:border-zinc-700 shadow-xs text-center">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold mx-auto flex items-center justify-center text-xs mb-1">
+              <a 
+                href="mailto:prem.capstone@finfeasibility.in"
+                className="bg-white dark:bg-zinc-800 p-2.5 rounded-lg border border-emerald-100 dark:border-zinc-700 shadow-xs text-center hover:border-emerald-500 transition-colors block group"
+                title="Email Prem"
+              >
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold mx-auto flex items-center justify-center text-xs mb-1 group-hover:scale-105 transition-transform">
                   P
                 </div>
-                <div className="font-bold text-zinc-900 dark:text-white text-xs">Prem</div>
+                <div className="font-bold text-zinc-900 dark:text-white text-xs group-hover:text-emerald-600 transition-colors">Prem</div>
                 <div className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-semibold">I4144</div>
-              </div>
+                <div className="text-[10px] text-zinc-400 mt-1 flex items-center justify-center gap-1">
+                  <span>Contact</span>
+                </div>
+              </a>
 
-              <div className="bg-white dark:bg-zinc-800 p-2.5 rounded-lg border border-emerald-100 dark:border-zinc-700 shadow-xs text-center">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold mx-auto flex items-center justify-center text-xs mb-1">
+              <a 
+                href="mailto:rohan.capstone@finfeasibility.in"
+                className="bg-white dark:bg-zinc-800 p-2.5 rounded-lg border border-emerald-100 dark:border-zinc-700 shadow-xs text-center hover:border-emerald-500 transition-colors block group"
+                title="Email Rohan"
+              >
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold mx-auto flex items-center justify-center text-xs mb-1 group-hover:scale-105 transition-transform">
                   R
                 </div>
-                <div className="font-bold text-zinc-900 dark:text-white text-xs">Rohan</div>
+                <div className="font-bold text-zinc-900 dark:text-white text-xs group-hover:text-emerald-600 transition-colors">Rohan</div>
                 <div className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-semibold">I4142</div>
-              </div>
+                <div className="text-[10px] text-zinc-400 mt-1 flex items-center justify-center gap-1">
+                  <span>Contact</span>
+                </div>
+              </a>
             </div>
           </div>
 

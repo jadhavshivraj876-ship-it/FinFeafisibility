@@ -17,7 +17,9 @@ import {
   Users, 
   Sparkles,
   ShieldCheck,
-  LogIn
+  LogIn,
+  Menu,
+  X
 } from 'lucide-react';
 import { Language } from '@/types';
 import { TRANSLATIONS } from '@/data/translations';
@@ -53,6 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<'signin' | 'signup'>('signin');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const t = TRANSLATIONS[currentLang];
 
@@ -69,7 +72,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-emerald-500/20 transition-colors shadow-xs">
+      <header className="sticky top-0 z-50 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-emerald-500/20 transition-colors shadow-xs">
         {/* Top micro-bar showing National Alignment & B.Tech Capstone Project Tag */}
         <div className="bg-gradient-to-r from-emerald-950 via-emerald-800 to-teal-900 text-white text-xs py-1 px-4 border-b border-emerald-500/20">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -94,8 +97,13 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Main navigation row */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Brand Logo & Name */}
-            <Link href="/" className="flex items-center gap-3 group">
+            {/* Brand Logo & Name - Clickable home link */}
+            <Link 
+              href="/" 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-3 group focus:outline-hidden focus:ring-2 focus:ring-emerald-500 rounded-xl"
+              aria-label="FinFeasibility Home"
+            >
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-md shadow-emerald-600/30 group-hover:scale-105 transition-transform card-3d-interactive">
                 <Building2 className="w-5 h-5" />
               </div>
@@ -208,7 +216,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
               </div>
 
-              {/* Quick DPR CTA button */}
+              {/* Quick DPR CTA button (Desktop) */}
               <Link
                 href="/dpr-generator"
                 className="hidden md:flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm hover:shadow transition-all"
@@ -216,9 +224,94 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 <span>Get DPR</span>
               </Link>
+
+              {/* Mobile Hamburger Menu Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="lg:hidden p-2 rounded-xl text-zinc-700 dark:text-zinc-200 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                aria-expanded={isMobileMenuOpen}
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-5 h-5 text-emerald-600" />
+                ) : (
+                  <Menu className="w-5 h-5" />
+                )}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Mobile Dropdown Menu Drawer */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden border-t border-emerald-500/20 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl shadow-2xl px-4 py-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
+            {/* Core 5 Module Links */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-3">
+                Advisory Modules
+              </span>
+              {navLinks.map((link) => {
+                const Icon = link.icon;
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      isActive
+                        ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/80 shadow-xs'
+                        : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/80'
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}`} />
+                    <span className="flex-1">{link.label}</span>
+                    {isActive && <span className="w-2 h-2 rounded-full bg-emerald-500" />}
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Quick Actions in Mobile Menu */}
+            <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
+              <Link
+                href="/dpr-generator"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Get Bank DPR Report</span>
+              </Link>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onOpenVoice();
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-300/80 dark:border-amber-700/60 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Mic className="w-3.5 h-3.5 text-amber-600" />
+                  <span>FinMitra Voice</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onOpenTeamModal();
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Users className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Capstone Info</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Auth Modal (Sign In / Register) */}

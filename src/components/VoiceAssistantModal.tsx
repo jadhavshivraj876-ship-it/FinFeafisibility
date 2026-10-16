@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { 
   Mic, 
   MicOff, 
@@ -307,14 +308,14 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
                 <p className="text-xs leading-relaxed">{m.text}</p>
                 {m.actionLink && (
                   <div className="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-700">
-                    <a
+                    <Link
                       href={m.actionLink.href}
                       onClick={onClose}
                       className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
                     >
                       <span>{m.actionLink.label}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
-                    </a>
+                    </Link>
                   </div>
                 )}
               </div>

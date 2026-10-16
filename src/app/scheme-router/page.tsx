@@ -12,7 +12,9 @@ import {
   Sparkles,
   FileCheck,
   Building2,
-  Users
+  Users,
+  Copy,
+  Check
 } from 'lucide-react';
 import { Language, EntrepreneurProfile, Gender, SocialCategory, LocationType, ProjectType } from '@/types';
 import { matchSchemesForProfile } from '@/lib/schemeMatcher';
@@ -25,6 +27,7 @@ export default function SchemeRouterPage() {
   const [currentLang, setCurrentLang] = useState<Language>('en');
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Profile questionnaire state
   const [name, setName] = useState('Shivraj Patil');
@@ -55,6 +58,17 @@ export default function SchemeRouterPage() {
   const matchedSchemes = useMemo(() => {
     return matchSchemesForProfile(profile);
   }, [profile]);
+
+  const handleCopyScheme = (schemeName: string, subsidy: string, portal: string) => {
+    const text = `Government Scheme Eligibility (FinFeasibility):
+• Scheme: ${schemeName}
+• Capital Subsidy: ${subsidy}
+• Eligible Bank Loan: ₹${Math.round(projectCost * 0.9).toLocaleString('en-IN')}
+• Official Application Portal: ${portal}`;
+    navigator.clipboard.writeText(text);
+    setToastMessage(`✓ Copied ${schemeName} eligibility details to clipboard!`);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-zinc-950">
@@ -203,6 +217,13 @@ export default function SchemeRouterPage() {
 
           {/* Right Column: Matched Government Schemes Cards (8 Cols) */}
           <div className="lg:col-span-8 space-y-4">
+            {toastMessage && (
+              <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{toastMessage}</span>
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-sm text-zinc-900 dark:text-white">
                 Ranked Scheme Recommendations ({matchedSchemes.length} Schemes Evaluated)
@@ -211,6 +232,27 @@ export default function SchemeRouterPage() {
                 Sorted by Eligibility & Subsidy Value
               </span>
             </div>
+
+            {matchedSchemes.length === 0 && (
+              <div className="p-8 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-center space-y-3">
+                <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
+                <h4 className="font-bold text-sm text-zinc-900 dark:text-white">No Direct Matches for Current Parameters</h4>
+                <p className="text-xs text-zinc-500 max-w-md mx-auto">
+                  Try adjusting the project cost or location type in the left panel to discover eligible state & central schemes.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProjectCost(1250000);
+                    setLocationType('Rural');
+                    setCategory('OBC');
+                  }}
+                  className="px-4 py-2 bg-emerald-700 text-white rounded-xl text-xs font-bold hover:bg-emerald-800 transition-colors"
+                >
+                  Reset Parameters
+                </button>
+              </div>
+            )}
 
             <div className="space-y-4">
               {matchedSchemes.map((res, index) => (
@@ -286,18 +328,34 @@ export default function SchemeRouterPage() {
 
                   {/* Actions & Official Portal Link */}
                   <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <Link
-                      href="/dpr-generator"
-                      className="font-bold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1"
-                    >
-                      <span>Prepare DPR for this Scheme</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href={`/dpr-generator?scheme=${encodeURIComponent(res.scheme.code)}`}
+                        className="font-bold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                      >
+                        <span>Prepare DPR for this Scheme</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopyScheme(
+                          res.scheme.name,
+                          res.eligibleSubsidyPercent > 0 ? `₹${res.calculatedSubsidyAmount.toLocaleString('en-IN')} (${res.eligibleSubsidyPercent}%)` : 'Nil / Interest Subvention',
+                          res.scheme.applicationPortalUrl
+                        )}
+                        className="inline-flex items-center gap-1 text-zinc-500 hover:text-emerald-600 transition-colors cursor-pointer text-xs font-semibold"
+                        title="Copy Scheme Summary"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy Details</span>
+                      </button>
+                    </div>
 
                     <a
                       href={res.scheme.applicationPortalUrl}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-semibold transition-colors"
                     >
                       <span>Official Online Application</span>
