@@ -40,6 +40,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [savedProjects, setSavedProjects] = useState<UserBusinessProfile[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Form states
   const [fullName, setFullName] = useState('');
@@ -71,8 +73,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     e.preventDefault();
     setIsSaving(true);
     setSaveSuccess(false);
+    setProfileError(null);
 
-    await updateUserProfile({
+    const result = await updateUserProfile({
       fullName,
       phone,
       district,
@@ -81,8 +84,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     });
 
     setIsSaving(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2500);
+    if (result.success) {
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+    } else {
+      setProfileError(result.error || 'Unable to update your profile.');
+    }
   };
 
   const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
@@ -171,8 +178,18 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
         {/* Modal Content */}
         <div className="p-6 sm:p-7 max-h-[65vh] overflow-y-auto">
+          {authError && (
+            <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300">
+              {authError}
+            </p>
+          )}
           {activeTab === 'profile' ? (
             <form onSubmit={handleUpdateProfile} className="space-y-4">
+              {profileError && (
+                <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300">
+                  {profileError}
+                </p>
+              )}
               {saveSuccess && (
                 <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -261,9 +278,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800">
                 <button
                   type="button"
-                  onClick={() => {
-                    signOut();
-                    onClose();
+                  onClick={async () => {
+                    setAuthError(null);
+                    const result = await signOut();
+                    if (result.success) {
+                      onClose();
+                    } else {
+                      setAuthError(result.error ?? 'Unable to sign out.');
+                    }
                   }}
                   className="inline-flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-semibold hover:underline cursor-pointer"
                 >

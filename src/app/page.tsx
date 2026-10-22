@@ -28,7 +28,10 @@ import {
   FolderKanban,
   Cpu,
   ExternalLink,
-  Loader2
+  Loader2,
+  Plus,
+  Check,
+  X
 } from 'lucide-react';
 import { DistrictData, Language, EntrepreneurProfile } from '@/types';
 import { TRANSLATIONS } from '@/data/translations';
@@ -36,6 +39,8 @@ import { performFinancialAnalysis } from '@/lib/financialCalculations';
 import { matchSchemesForProfile } from '@/lib/schemeMatcher';
 import { detectUserLocation } from '@/lib/geolocation';
 import { extractBusinessDomain } from '@/lib/businessGenerator';
+import { validateEnterpriseIdea } from '@/lib/businessValidator';
+import { CURATED_MICRO_SECTORS } from '@/data/microSectors';
 import { synthesizeDistrictData, DISTRICTS_DATABASE } from '@/data/districts';
 import { saveUserBusiness, getUserBusinesses } from '@/lib/userStorage';
 import { UserBusinessProfile } from '@/lib/supabaseClient';
@@ -53,14 +58,20 @@ export default function HomePage() {
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [isInvestorModalOpen, setIsInvestorModalOpen] = useState(false);
 
-  // Flexible User Location State (No hardcoded city locks or popular businesses)
-  const [locationInput, setLocationInput] = useState<string>('Satara, Maharashtra');
+  // Flexible User Location State (Empty by default, no hardcoded Satara)
+  const [locationInput, setLocationInput] = useState<string>('');
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [detectedLocationBadge, setDetectedLocationBadge] = useState<string | null>(null);
+
+  // Sector selection state (multiple options + custom adder)
+  const [selectedSector, setSelectedSector] = useState<string>('');
+  const [customSectorInput, setCustomSectorInput] = useState<string>('');
+  const [showCustomSectorInput, setShowCustomSectorInput] = useState<boolean>(false);
 
   // Enterprise Model Idea State (Empty by default)
   const [ideaInputValue, setIdeaInputValue] = useState<string>('');
   const [inputError, setInputError] = useState<string | null>(null);
+  const [validationSuggestions, setValidationSuggestions] = useState<string[]>([]);
   const [hasAnalyzed, setHasAnalyzed] = useState<boolean>(false);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analysisStep, setAnalysisStep] = useState<number>(0);
@@ -213,15 +224,23 @@ export default function HomePage() {
   const handleRunAiAnalysis = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const cleanQuery = ideaInputValue.trim();
-    const alphaChars = cleanQuery.replace(/[^a-zA-Z]/g, '');
 
-    if (alphaChars.length < 3) {
-      setInputError('Please enter a valid enterprise idea with at least 3 letters (e.g. Cold Pressed Oil Unit, Bakery Shop, EV Charging Station, Dairy Farm).');
+    // Rigorous validation: check length, gibberish, and recognized concept
+    const val = validateEnterpriseIdea(cleanQuery);
+    if (!val.isValid) {
+      setInputError(val.error || 'Please enter a valid enterprise idea (e.g. Cold Pressed Oil Unit, Bakery Shop, EV Charging Station, Dairy Farm).');
+      setValidationSuggestions(val.suggestions || []);
       return;
     }
 
     setInputError(null);
-    const query = cleanQuery;
+    setValidationSuggestions([]);
+
+    const activeSector = selectedSector || liveDomainClassification.domain;
+    let targetLoc = locationInput.trim();
+    if (!targetLoc) {
+      targetLoc = currentDistrict.name ? `${currentDistrict.name}, ${currentDistrict.state}` : 'India';
+    }
 
     setIsAnalyzing(true);
     setAnalysisStep(1);
@@ -236,8 +255,9 @@ export default function HomePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          idea: query,
-          location: locationInput.trim() || 'India'
+          idea: cleanQuery,
+          location: targetLoc,
+          sector: activeSector
         })
       });
 
@@ -253,14 +273,18 @@ export default function HomePage() {
         setChatResponses([
           {
             sender: 'ai',
-            text: `AI Feasibility report generated for "${json.data.title}" in ${locationInput}. Projected margin is ${json.data.averageMarginPercent}% with a healthy bank DSCR of ${financialAnalysis.averageDscr}. Ask me about machinery suppliers, PMEGP subsidies, or pitch strategies!`
+            text: `Feasibility appraisal generated for "${json.data.title}" in ${targetLoc}. Projected margin is ${json.data.averageMarginPercent}% with a healthy bank DSCR of ${financialAnalysis.averageDscr}. Ask me about machinery suppliers, PMEGP subsidies, or pitch strategies!`
           }
         ]);
       } else {
-        throw new Error(json.error || 'AI analysis response failed');
+        setInputError(json.error || 'The entered concept could not be validated. Please enter a recognized micro-enterprise concept.');
+        if (json.suggestions) {
+          setValidationSuggestions(json.suggestions);
+        }
       }
     } catch (err: any) {
       console.warn('AI analysis call note:', err);
+      setInputError('Network issue or verification failure. Please retry with a valid enterprise idea.');
     } finally {
       setIsAnalyzing(false);
       setAnalysisStep(0);
@@ -387,28 +411,28 @@ export default function HomePage() {
             <div className="flex items-center gap-2 flex-wrap">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold shadow-inner">
                 <Award className="w-3.5 h-3.5 text-amber-300" />
-                <span>FinFeasibility: AI Enterprise Modeling & Investor Network</span>
+                <span>FinFeasibility: Hyper-Local Micro-Enterprise Advisory</span>
               </div>
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
-              Turn Any Business Idea Into a{' '}
+              Empowering Micro-Entrepreneurs to Build{' '}
               <span className="bg-gradient-to-r from-amber-300 via-emerald-300 to-teal-200 bg-clip-text text-transparent">
-                Bank-Grade Enterprise
+                Bank-Grade Enterprises
               </span>
             </h1>
 
             <p className="text-sm sm:text-base text-emerald-100/90 leading-relaxed max-w-2xl">
-              Powered by Google Gemini AI. Enter your unique enterprise concept and any target location to synthesize machinery CapEx, bank DSCR criteria, government subsidies, and verified institutional investors.
+              Tailored for rural and local micro-entrepreneurs. Enter your enterprise concept, target location, and sector to synthesize bankable machinery CapEx, DSCR loan eligibility, government subsidies (PMEGP, PMFME, Mudra), and verified institutional financing.
             </p>
           </div>
         </section>
 
-        {/* AI Launch Console: Freeform Location & Unique Idea Input */}
+        {/* AI Launch Console: Freeform Location, Multi-Option Sector & Unique Idea Input */}
         <section className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-emerald-500/20 shadow-xl space-y-6 card-3d-glow">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            {/* Freeform Target Location Input (5 cols) */}
+            {/* Target Location Input (5 cols) */}
             <div className="lg:col-span-5 space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">
@@ -439,16 +463,16 @@ export default function HomePage() {
                   type="text"
                   value={locationInput}
                   onChange={(e) => setLocationInput(e.target.value)}
-                  placeholder="Enter any city, town, or district (e.g. Pune, Indore, Solapur, Varanasi...)"
+                  placeholder="Enter your City, District, or Town (e.g. Pune, Varanasi, Madurai) or Auto-Detect"
                   className="w-full p-3.5 pl-4 pr-10 rounded-2xl bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 outline-hidden"
                 />
                 <MapPin className="w-4 h-4 text-zinc-400 absolute right-3.5 top-4" />
               </div>
 
               <div className="flex items-center gap-2 text-xs text-zinc-500 pt-1">
-                <span>Free-form Indian or Global Location</span>
+                <span>Free-form Indian Location</span>
                 <span>•</span>
-                <span>No hardcoded restrictions</span>
+                <span>Custom Mandis & APMCs</span>
               </div>
             </div>
 
@@ -461,7 +485,7 @@ export default function HomePage() {
                 </label>
                 <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
                   <Cpu className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>AI Powered</span>
+                  <span>Verified & Bank-Graded</span>
                 </span>
               </div>
 
@@ -472,9 +496,12 @@ export default function HomePage() {
                     value={ideaInputValue}
                     onChange={(e) => {
                       setIdeaInputValue(e.target.value);
-                      if (inputError) setInputError(null);
+                      if (inputError) {
+                        setInputError(null);
+                        setValidationSuggestions([]);
+                      }
                     }}
-                    placeholder="e.g. Organic Honey Processing, Cold Pressed Oil, Bamboo Products, Solar Cold Storage..."
+                    placeholder="e.g. Cold Pressed Mustard Oil, Ready-made Garment Unit, Organic Honey Processing..."
                     className={`w-full p-3.5 pl-4 pr-10 rounded-2xl bg-zinc-50 dark:bg-zinc-800/80 border text-zinc-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-emerald-500 outline-hidden transition-colors ${
                       inputError ? 'border-rose-400 dark:border-rose-500/60 ring-1 ring-rose-400' : 'border-zinc-200 dark:border-zinc-700'
                     }`}
@@ -485,7 +512,10 @@ export default function HomePage() {
                       type="button"
                       onClick={() => {
                         setIdeaInputValue('');
-                        if (inputError) setInputError(null);
+                        if (inputError) {
+                          setInputError(null);
+                          setValidationSuggestions([]);
+                        }
                       }}
                       className="absolute right-3 top-3.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-xs font-bold cursor-pointer"
                     >
@@ -504,30 +534,197 @@ export default function HomePage() {
                 </button>
               </form>
 
-              {/* Inline Validation Alert */}
+              {/* Inline Validation Alert & Suggestion Chips */}
               {inputError && (
-                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium animate-in fade-in slide-in-from-top-1">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
-                  <span>{inputError}</span>
+                <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-200 text-xs space-y-2 animate-in fade-in slide-in-from-top-1">
+                  <div className="flex items-start gap-2 font-medium">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
+                    <span>{inputError}</span>
+                  </div>
+
+                  {validationSuggestions.length > 0 && (
+                    <div className="pt-1.5 border-t border-rose-200/60 dark:border-rose-800/40 space-y-1.5">
+                      <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider block">
+                        Click to try a verified micro-enterprise concept:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {validationSuggestions.map((sug) => (
+                          <button
+                            key={sug}
+                            type="button"
+                            onClick={() => {
+                              setIdeaInputValue(sug);
+                              setInputError(null);
+                              setValidationSuggestions([]);
+                            }}
+                            className="text-[11px] px-2.5 py-1 rounded-xl bg-white dark:bg-rose-900/60 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-100 font-semibold hover:bg-rose-100 dark:hover:bg-rose-800 transition-all cursor-pointer text-left shadow-xs"
+                          >
+                            + {sug}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
+            </div>
+          </div>
 
-              {/* Real-time Sector & Domain Classifier Preview */}
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <span className="text-xs text-zinc-500 font-medium">Detected Sector:</span>
-                <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold border ${liveDomainClassification.badgeColor}`}>
-                  <Briefcase className="w-3 h-3" />
-                  {liveDomainClassification.domain}
-                </span>
-                <div className="hidden sm:flex items-center gap-1">
-                  {liveDomainClassification.tags.map(tag => (
-                    <span key={tag} className="text-[10px] px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
+          {/* Interactive Multi-Option Sector Selector */}
+          <div className="pt-4 border-t border-zinc-200/80 dark:border-zinc-800 space-y-2.5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Enterprise Sector (Choose or Add Custom):</span>
+              </label>
+
+              <div className="flex items-center gap-2">
+                {selectedSector ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedSector('');
+                      setShowCustomSectorInput(false);
+                    }}
+                    className="text-[11px] text-zinc-500 hover:text-emerald-600 dark:hover:text-emerald-400 font-semibold cursor-pointer"
+                  >
+                    Reset to Auto-Detect
+                  </button>
+                ) : (
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                    Auto-inferred: <strong>{liveDomainClassification.domain}</strong>
+                  </span>
+                )}
               </div>
             </div>
+
+            {/* Sector Option Pills */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Auto-Detect Pill */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedSector('');
+                  setShowCustomSectorInput(false);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                  !selectedSector && !showCustomSectorInput
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                    : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-emerald-400'
+                }`}
+              >
+                <span>Auto-Detect</span>
+              </button>
+
+              {/* Curated Micro Sectors */}
+              {CURATED_MICRO_SECTORS.map((sec) => {
+                const isSelected = selectedSector === sec.name;
+                return (
+                  <button
+                    key={sec.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSector(sec.name);
+                      setShowCustomSectorInput(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-400/30'
+                        : 'bg-white dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-emerald-400'
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3 h-3 text-white" />}
+                    <span>{sec.name}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${
+                      isSelected ? 'bg-emerald-800/60 text-emerald-100' : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400'
+                    }`}>
+                      {sec.typicalCostRange}
+                    </span>
+                  </button>
+                );
+              })}
+
+              {/* Add Custom Sector Option */}
+              {!showCustomSectorInput ? (
+                <button
+                  type="button"
+                  onClick={() => setShowCustomSectorInput(true)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold border border-dashed border-emerald-500/50 hover:border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>+ Add Custom Sector</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5 animate-in fade-in">
+                  <input
+                    type="text"
+                    value={customSectorInput}
+                    onChange={(e) => setCustomSectorInput(e.target.value)}
+                    placeholder="Type custom sector..."
+                    className="px-3 py-1 rounded-xl text-xs bg-white dark:bg-zinc-800 border border-emerald-400 text-zinc-900 dark:text-white font-medium outline-hidden focus:ring-1 focus:ring-emerald-500"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (customSectorInput.trim()) {
+                          setSelectedSector(customSectorInput.trim());
+                          setShowCustomSectorInput(false);
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customSectorInput.trim()) {
+                        setSelectedSector(customSectorInput.trim());
+                        setShowCustomSectorInput(false);
+                      }
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
+                  >
+                    Set
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomSectorInput(false)}
+                    className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* If a sector is selected, show its popular ideas for quick micro-enterprise inspiration */}
+            {selectedSector && (
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-zinc-500">
+                <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                  Active Sector: <strong>{selectedSector}</strong>
+                </span>
+                {CURATED_MICRO_SECTORS.find(s => s.name === selectedSector)?.popularIdeas && (
+                  <>
+                    <span>• Quick Ideas:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {CURATED_MICRO_SECTORS.find(s => s.name === selectedSector)!.popularIdeas.slice(0, 3).map(idea => (
+                        <button
+                          key={idea}
+                          type="button"
+                          onClick={() => {
+                            setIdeaInputValue(idea);
+                            setInputError(null);
+                            setValidationSuggestions([]);
+                          }}
+                          className="text-[11px] px-2 py-0.5 rounded-lg bg-zinc-100 hover:bg-emerald-100 dark:bg-zinc-800 dark:hover:bg-emerald-950 text-zinc-700 dark:text-zinc-300 font-medium cursor-pointer transition-colors"
+                        >
+                          {idea}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </section>
 
@@ -540,10 +737,10 @@ export default function HomePage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white">
-                  Gemini AI Financial Appraisal Engine Running
+                  Financial Feasibility & Bank Appraisal Engine Running
                 </h3>
                 <p className="text-xs text-emerald-200/80">
-                  Synthesizing custom feasibility for &quot;{ideaInputValue || 'Enterprise'}&quot; in {locationInput}...
+                  Synthesizing custom feasibility for &quot;{ideaInputValue || 'Enterprise'}&quot; in {locationInput || 'your location'} ({selectedSector || liveDomainClassification.domain})...
                 </p>
               </div>
             </div>
@@ -779,19 +976,19 @@ export default function HomePage() {
               </div>
             </section>
 
-            {/* REAL VERIFIED INVESTOR MATCHING SECTION */}
+            {/* REAL VERIFIED INVESTOR & INSTITUTIONAL FINANCING SECTION */}
             <section className="bg-gradient-to-r from-emerald-950 via-teal-950 to-zinc-950 text-white p-6 sm:p-8 rounded-3xl shadow-2xl border border-emerald-500/20 card-3d-glow">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-2 max-w-2xl">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold border border-amber-400/30">
                     <Handshake className="w-3.5 h-3.5" />
-                    <span>Active Investor & Co-Financing Network</span>
+                    <span>Active MSME Credit & Investor Network</span>
                   </div>
                   <h2 className="text-2xl font-black text-white">
-                    Verified Institutional Investors for {aiReport.domain}
+                    Verified Institutional Financing for Rural Enterprise
                   </h2>
                   <p className="text-xs sm:text-sm text-emerald-100/80 leading-relaxed">
-                    Matched {aiReport.matchedInvestors.length} verified funds actively investing in <strong>{aiReport.domain}</strong> enterprises.
+                    Matched {aiReport.matchedInvestors.length} verified institutional lenders, social credit funds, and MSME desks actively financing <strong>{aiReport.domain}</strong> enterprises in {locationInput || 'your region'}.
                   </p>
                 </div>
 

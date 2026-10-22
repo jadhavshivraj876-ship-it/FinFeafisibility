@@ -6,7 +6,7 @@ import { supabase } from './supabaseClient';
 
 export interface UserRegistrationData {
   email: string;
-  password?: string;
+  password: string;
   fullName: string;
   phone?: string;
   district?: string;
@@ -21,43 +21,15 @@ export function useAuth() {
 
   const refreshUser = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setSession(session);
-        setUser(session.user);
-        setLoading(false);
-        return;
-      }
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) throw error;
 
-      // Check local demo / cached user
-      const demoStr = typeof window !== 'undefined' ? localStorage.getItem('finfeasibility_active_user') : null;
-      if (demoStr) {
-        try {
-          const parsed = JSON.parse(demoStr);
-          const syntheticUser = {
-            id: parsed.id || 'usr-' + (parsed.email ? btoa(parsed.email).replace(/=/g, '').slice(0, 10) : 'local'),
-            email: parsed.email,
-            user_metadata: {
-              full_name: parsed.fullName || parsed.name,
-              phone: parsed.phone,
-              district: parsed.district,
-              state: parsed.state,
-              preferred_sector: parsed.preferredSector,
-              role: 'MSME Registered Entrepreneur'
-            },
-            app_metadata: {},
-            aud: 'authenticated',
-            created_at: parsed.createdAt || new Date().toISOString()
-          } as unknown as User;
-          setUser(syntheticUser);
-        } catch {
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
+      setSession(session);
+      setUser(session?.user ?? null);
     } catch (err) {
       console.warn('Auth session check error:', err);
+      setSession(null);
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -85,9 +57,9 @@ export function useAuth() {
           }));
         }
       } else {
-        const demoStr = typeof window !== 'undefined' ? localStorage.getItem('finfeasibility_active_user') : null;
-        if (!demoStr) {
-          setUser(null);
+        setUser(null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('finfeasibility_active_user');
         }
       }
       setLoading(false);
@@ -112,8 +84,9 @@ export function useAuth() {
     try {
       const { data: authData, error } = await supabase.auth.signUp({
         email,
-        password: password || 'Feasibility@2026',
+        password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             full_name: fullName,
             phone: phone || '',
@@ -125,24 +98,23 @@ export function useAuth() {
       });
 
       if (error) {
-        // If email confirmation is required or rate-limited, fall back smoothly to resilient local registration
-        console.warn('Supabase sign-up message:', error.message);
+        return { data: null, error };
       }
 
-      // Always persist active user locally so the user is immediately registered & logged in!
-      const userRecord = {
-        id: authData?.user?.id || 'usr-' + btoa(email).replace(/=/g, '').slice(0, 10),
-        email,
-        fullName,
-        phone,
-        district,
-        state,
-        preferredSector,
-        createdAt: new Date().toISOString()
-      };
-      localStorage.setItem('finfeasibility_active_user', JSON.stringify(userRecord));
-      window.dispatchEvent(new Event('finfeasibility_auth_updated'));
-      await refreshUser();
+      if (authData.session?.user) {
+        localStorage.setItem('finfeasibility_active_user', JSON.stringify({
+          id: authData.session.user.id,
+          email: authData.session.user.email,
+          fullName: authData.session.user.user_metadata?.full_name,
+          phone: authData.session.user.user_metadata?.phone,
+          district: authData.session.user.user_metadata?.district,
+          state: authData.session.user.user_metadata?.state,
+          preferredSector: authData.session.user.user_metadata?.preferred_sector,
+          createdAt: authData.session.user.created_at
+        }));
+        window.dispatchEvent(new Event('finfeasibility_auth_updated'));
+        await refreshUser();
+      }
 
       return { data: authData, error: null };
     } catch (err: any) {
@@ -160,16 +132,6 @@ export function useAuth() {
       });
 
       if (error) {
-        // Check if there is a locally saved user with this email
-        const cachedStr = localStorage.getItem('finfeasibility_active_user');
-        if (cachedStr) {
-          const cached = JSON.parse(cachedStr);
-          if (cached.email?.toLowerCase() === email.toLowerCase()) {
-            window.dispatchEvent(new Event('finfeasibility_auth_updated'));
-            await refreshUser();
-            return { data: { user: cached, session: null }, error: null };
-          }
-        }
         return { data: null, error };
       }
 
@@ -196,11 +158,10 @@ export function useAuth() {
 
   // Sign In with Google OAuth
   const signInWithGoogle = async () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
     return supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: origin,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
   };
@@ -210,7 +171,8 @@ export function useAuth() {
     return supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : '',
+        shouldCreateUser: false,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
   };
@@ -218,18 +180,20 @@ export function useAuth() {
   // Update Profile
   const updateUserProfile = async (updates: Partial<UserRegistrationData>) => {
     try {
-      if (user) {
-        // Attempt Supabase update
-        await supabase.auth.updateUser({
-          data: {
-            full_name: updates.fullName,
-            phone: updates.phone,
-            district: updates.district,
-            state: updates.state,
-            preferred_sector: updates.preferredSector
-          }
-        });
+      if (!user) {
+        return { success: false, error: 'You must be signed in to update your profile.' };
       }
+
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          full_name: updates.fullName,
+          phone: updates.phone,
+          district: updates.district,
+          state: updates.state,
+          preferred_sector: updates.preferredSector
+        }
+      });
+      if (error) throw error;
 
       // Update local storage
       const cachedStr = localStorage.getItem('finfeasibility_active_user');
@@ -252,14 +216,24 @@ export function useAuth() {
   // Sign Out
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.warn('Sign out warn:', e);
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+        return { success: false, error: error.message };
+      }
+
+      localStorage.removeItem('finfeasibility_active_user');
+      window.dispatchEvent(new Event('finfeasibility_auth_updated'));
+      setUser(null);
+      setSession(null);
+      return { success: true };
+    } catch (err) {
+      console.error('Sign out error:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Unable to sign out.'
+      };
     }
-    localStorage.removeItem('finfeasibility_active_user');
-    window.dispatchEvent(new Event('finfeasibility_auth_updated'));
-    setUser(null);
-    setSession(null);
   };
 
   return {

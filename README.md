@@ -1,5 +1,17 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Supabase Authentication
+
+Google sign-in, email sign-in links, and email confirmation links return to `/auth/callback`.
+Add each environment's callback URL to **Supabase Dashboard → Authentication → URL Configuration → Redirect URLs**:
+
+- `http://localhost:3000/auth/callback` for local development
+- `https://<your-domain>/auth/callback` for each deployed domain
+
+Set the deployed domain as the Supabase **Site URL**. To enable Google sign-in, configure the Google provider in **Authentication → Providers** and add the Supabase OAuth callback URL shown there to the Google OAuth client's authorized redirect URIs. Email link delivery also requires a working SMTP/email provider in Supabase.
+
+The browser accesses `user_businesses` with the public Supabase key, so enable Row Level Security on that table and restrict `SELECT`, `INSERT`, `UPDATE`, and `DELETE` policies to rows where `user_id = auth.uid()`. Never expose the service-role key in client-side code.
+
 ## Getting Started
 
 First, run the development server:

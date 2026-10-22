@@ -7,24 +7,12 @@ export async function saveUserBusiness(profile: Omit<UserBusinessProfile, 'id' |
     const { data: authData } = await supabase.auth.getUser();
     const user = authData?.user;
 
-    // Check local storage active user if supabase user not session-linked
-    let userEmail = user?.email;
-    let userId = user?.id;
-    if (!user && typeof window !== 'undefined') {
-      const activeStr = localStorage.getItem('finfeasibility_active_user');
-      if (activeStr) {
-        const active = JSON.parse(activeStr);
-        userEmail = active.email;
-        userId = active.id;
-      }
-    }
-
     const uniqueId = 'biz-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
 
     const record: UserBusinessProfile = {
       ...profile,
       id: uniqueId,
-      userId: userId || 'guest-entrepreneur',
+      userId: user?.id || 'guest-entrepreneur',
       createdAt: new Date().toISOString()
     };
 
@@ -33,7 +21,11 @@ export async function saveUserBusiness(profile: Omit<UserBusinessProfile, 'id' |
       const existingStr = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_KEY) : null;
       const existingList: UserBusinessProfile[] = existingStr ? JSON.parse(existingStr) : [];
       // Prevent duplicate saving of the exact same title & district within 1 minute
-      const filtered = existingList.filter(item => !(item.businessTitle === profile.businessTitle && item.district === profile.district));
+      const filtered = existingList.filter(item => !(
+        item.userId === record.userId &&
+        item.businessTitle === profile.businessTitle &&
+        item.district === profile.district
+      ));
       filtered.unshift(record);
       if (typeof window !== 'undefined') {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(filtered.slice(0, 30)));
@@ -50,7 +42,7 @@ export async function saveUserBusiness(profile: Omit<UserBusinessProfile, 'id' |
         .insert([
           {
             user_id: user.id,
-            user_email: userEmail || user.email,
+            user_email: user.email,
             business_title: profile.businessTitle,
             category: profile.category,
             district: profile.district,
@@ -80,11 +72,14 @@ export async function saveUserBusiness(profile: Omit<UserBusinessProfile, 'id' |
 }
 
 export async function getUserBusinesses(): Promise<UserBusinessProfile[]> {
+  let cacheUserId = 'guest-entrepreneur';
+
   try {
     const { data: authData } = await supabase.auth.getUser();
     const user = authData?.user;
 
     if (user) {
+      cacheUserId = user.id;
       const { data, error } = await supabase
         .from('user_businesses')
         .select('*')
@@ -109,30 +104,37 @@ export async function getUserBusinesses(): Promise<UserBusinessProfile[]> {
       }
     }
 
-    // Fallback to local cache
-    const existingStr = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_KEY) : null;
-    return existingStr ? JSON.parse(existingStr) : [];
+    return getCachedBusinesses(cacheUserId);
   } catch (err) {
     console.warn('Error fetching businesses, using cache:', err);
-    const existingStr = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_KEY) : null;
-    return existingStr ? JSON.parse(existingStr) : [];
+    return getCachedBusinesses(cacheUserId);
   }
+}
+
+function getCachedBusinesses(userId: string): UserBusinessProfile[] {
+  const existingStr = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_KEY) : null;
+  const businesses: UserBusinessProfile[] = existingStr ? JSON.parse(existingStr) : [];
+  return businesses.filter((business) => business.userId === userId);
 }
 
 export async function deleteUserBusiness(id: string): Promise<boolean> {
   try {
-    // Delete from Supabase if online
     const { data: authData } = await supabase.auth.getUser();
-    if (authData?.user) {
-      await supabase.from('user_businesses').delete().eq('id', id);
+    const userId = authData.user?.id;
+    if (userId) {
+      const { error } = await supabase
+        .from('user_businesses')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
+      if (error) throw error;
     }
 
-    // Delete from LocalStorage
     if (typeof window !== 'undefined') {
       const existingStr = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (existingStr) {
         const list: UserBusinessProfile[] = JSON.parse(existingStr);
-        const filtered = list.filter(item => item.id !== id);
+        const filtered = list.filter((item) => item.id !== id || item.userId !== (userId || 'guest-entrepreneur'));
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(filtered));
         window.dispatchEvent(new Event('finfeasibility_storage_updated'));
       }

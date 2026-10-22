@@ -6,7 +6,6 @@ import {
   CheckCircle2, 
   AlertCircle, 
   Building2, 
-  Sparkles, 
   Lock, 
   Mail, 
   User as UserIcon, 
@@ -92,10 +91,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setIsSubmitting(true);
       setStatusMessage(null);
 
-      const { error } = await signUp({
+      const { data, error } = await signUp({
         fullName: regFullName.trim(),
         email: regEmail.trim(),
-        password: regPassword || 'Feasibility@2026',
+        password: regPassword,
         phone: regPhone.trim(),
         district: regDistrict.trim() || 'Satara',
         state: regState.trim() || 'Maharashtra',
@@ -104,10 +103,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       if (error) {
         setStatusMessage({ type: 'error', text: error.message || 'Registration failed.' });
+      } else if (!data?.session) {
+        setStatusMessage({
+          type: 'success',
+          text: `We sent a confirmation link to ${regEmail.trim()}. Open it to finish creating your account.`
+        });
       } else {
         setStatusMessage({ 
           type: 'success', 
-          text: `Account created for ${regFullName}! You are now registered and logged in.` 
+          text: `Account created for ${regFullName}! You are now signed in.`
         });
         setTimeout(() => {
           onClose();
@@ -133,22 +137,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleInstantDemoLogin = () => {
-    signUp({
-      fullName: 'Shivraj Patil',
-      email: 'entrepreneur@finfeasibility.ai',
-      password: 'DemoPassword@2026',
-      phone: '+91 98220 12345',
-      district: 'Satara',
-      state: 'Maharashtra',
-      preferredSector: 'Agro & Food Processing'
-    });
-    setStatusMessage({ type: 'success', text: 'Logged in as Demo MSME Entrepreneur (Shivraj Patil).' });
-    setTimeout(() => {
-      onClose();
-    }, 600);
   };
 
   return (
@@ -337,17 +325,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </button>
               </form>
 
-              {/* Instant Evaluation Login button */}
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                <button
-                  type="button"
-                  onClick={handleInstantDemoLogin}
-                  className="w-full py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>1-Click Instant Evaluation Login</span>
-                </button>
-              </div>
             </div>
           ) : (
             /* Sign Up / Registration Tab */
