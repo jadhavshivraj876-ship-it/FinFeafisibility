@@ -148,8 +148,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="flex items-center gap-2 sm:gap-3">
               {/* User Profile / Registration Pill */}
               {user ? (
-                <button
-                  onClick={() => setShowProfileModal(true)}
+                <Link
+                  href="/profile"
                   className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700/60 hover:border-emerald-500 text-zinc-800 dark:text-zinc-200 text-xs font-bold transition-all shadow-xs cursor-pointer group"
                   title="Open Entrepreneur Profile"
                 >
@@ -160,7 +160,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className="text-[10px] bg-emerald-200 dark:bg-emerald-800/80 text-emerald-900 dark:text-emerald-100 px-1.5 py-0.2 rounded font-bold">
                     Profile
                   </span>
-                </button>
+                </Link>
               ) : (
                 <div className="flex items-center gap-1.5">
                   <button
@@ -275,6 +275,51 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Quick Actions in Mobile Menu */}
             <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
+              {user ? (
+                <Link
+                  href="/profile"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-full py-2.5 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700/80 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-black">
+                      {initials}
+                    </div>
+                    <span>My Entrepreneur Profile</span>
+                  </div>
+                  <span className="text-[10px] bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-1.5 py-0.2 rounded font-bold">
+                    View
+                  </span>
+                </Link>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setAuthModalTab('signin');
+                      setShowAuthModal(true);
+                    }}
+                    className="w-full py-2 px-3 rounded-xl border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Sign In</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setAuthModalTab('signup');
+                      setShowAuthModal(true);
+                    }}
+                    className="w-full py-2 px-3 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Register</span>
+                  </button>
+                </div>
+              )}
+
               <Link
                 href="/dpr-generator"
                 onClick={() => setIsMobileMenuOpen(false)}

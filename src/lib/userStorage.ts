@@ -2,17 +2,35 @@ import { supabase, UserBusinessProfile } from './supabaseClient';
 
 const LOCAL_STORAGE_KEY = 'finfeasibility_user_businesses';
 
+
+function getActiveUser(): { id: string; email?: string } {
+  try {
+    if (typeof window !== 'undefined') {
+      const activeStr = localStorage.getItem('finfeasibility_active_user');
+      if (activeStr) {
+        const parsed = JSON.parse(activeStr);
+        return { id: parsed.id || 'guest-entrepreneur', email: parsed.email };
+      }
+    }
+  } catch (e) {
+    // Ignore JSON parse error
+  }
+  return { id: 'guest-entrepreneur' };
+}
+
 export async function saveUserBusiness(profile: Omit<UserBusinessProfile, 'id' | 'createdAt'>): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
     const { data: authData } = await supabase.auth.getUser();
+    const active = getActiveUser();
     const user = authData?.user;
+    const effectiveUserId = user?.id || active.id;
 
     const uniqueId = 'biz-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
 
     const record: UserBusinessProfile = {
       ...profile,
       id: uniqueId,
-      userId: user?.id || 'guest-entrepreneur',
+      userId: effectiveUserId,
       createdAt: new Date().toISOString()
     };
 
@@ -72,14 +90,15 @@ export async function saveUserBusiness(profile: Omit<UserBusinessProfile, 'id' |
 }
 
 export async function getUserBusinesses(): Promise<UserBusinessProfile[]> {
-  let cacheUserId = 'guest-entrepreneur';
+  const active = getActiveUser();
+  let effectiveUserId = active.id;
 
   try {
     const { data: authData } = await supabase.auth.getUser();
     const user = authData?.user;
 
     if (user) {
-      cacheUserId = user.id;
+      effectiveUserId = user.id;
       const { data, error } = await supabase
         .from('user_businesses')
         .select('*')
@@ -104,37 +123,40 @@ export async function getUserBusinesses(): Promise<UserBusinessProfile[]> {
       }
     }
 
-    return getCachedBusinesses(cacheUserId);
+    return getCachedBusinesses(effectiveUserId);
   } catch (err) {
     console.warn('Error fetching businesses, using cache:', err);
-    return getCachedBusinesses(cacheUserId);
+    return getCachedBusinesses(effectiveUserId);
   }
 }
 
 function getCachedBusinesses(userId: string): UserBusinessProfile[] {
   const existingStr = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_KEY) : null;
   const businesses: UserBusinessProfile[] = existingStr ? JSON.parse(existingStr) : [];
-  return businesses.filter((business) => business.userId === userId);
+  // Return projects matching userId OR fallback guest projects if user is logged in
+  return businesses.filter((b) => b.userId === userId || (userId !== 'guest-entrepreneur' && b.userId === 'guest-entrepreneur'));
 }
 
 export async function deleteUserBusiness(id: string): Promise<boolean> {
   try {
     const { data: authData } = await supabase.auth.getUser();
-    const userId = authData.user?.id;
-    if (userId) {
+    const active = getActiveUser();
+    const userId = authData?.user?.id || active.id;
+
+    if (authData?.user?.id) {
       const { error } = await supabase
         .from('user_businesses')
         .delete()
         .eq('id', id)
-        .eq('user_id', userId);
-      if (error) throw error;
+        .eq('user_id', authData.user.id);
+      if (error) console.warn('Supabase delete error:', error.message);
     }
 
     if (typeof window !== 'undefined') {
       const existingStr = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (existingStr) {
         const list: UserBusinessProfile[] = JSON.parse(existingStr);
-        const filtered = list.filter((item) => item.id !== id || item.userId !== (userId || 'guest-entrepreneur'));
+        const filtered = list.filter((item) => item.id !== id);
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(filtered));
         window.dispatchEvent(new Event('finfeasibility_storage_updated'));
       }
